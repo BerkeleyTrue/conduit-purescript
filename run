@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# This script will be used to run commands found in the script directory
+
+# get all the scripts in the directory
+SCRIPTS=$(ls -1 scripts)
+
+# if an argument matches a script, run that script and
+for script in $SCRIPTS; do
+    if [ "$1" == "$script" ]; then
+        echo "Running $script"
+        ./scripts/$script
+        exit 0
+    fi
+done
+
+# if no argument matches a script, use gum and have the user choose a script
+CHOICE=$(echo $SCRIPTS | tr " " "\n" | gum choose)
+
+# If nothing was chosen, exit
+if [ -z "$CHOICE" ]; then
+    exit 1
+fi
+
+# run the chosen script
+echo "Running $CHOICE"
+./scripts/$CHOICE
+exit 1

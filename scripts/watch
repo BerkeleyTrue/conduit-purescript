@@ -1,0 +1,3 @@
+#!/bin/bash
+
+esbuild --servedir=public & find src | entr -s 'echo rebundle; purs-nix bundle' || exit 1
