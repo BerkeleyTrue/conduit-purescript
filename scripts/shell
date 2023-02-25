@@ -1,3 +1,17 @@
 #!/bin/bash
 
-nix develop
+APPS=(
+  "client"
+  "server"
+  "ide"
+)
+
+app=$(printf "%s\n" "${APPS[@]}" | gum choose)
+
+echo "entering $app shell"
+
+if [[ $app == "ide" ]]; then
+  eval "nix develop"
+else
+  eval "nix develop .#$app"
+fi
