@@ -46,7 +46,7 @@
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
             set -x
-            ${lib.getExe pkgs.nodejs} -e 'import("./output/Server.Main/index.js").then(Main => Main.main());'
+            ${lib.getExe pkgs.bun} --hot src/server/main.js
           '';
         in
         {
@@ -61,6 +61,7 @@
             name = "conduit";
 
             packages = with pkgs; [
+              bun
               nodejs
               (ps.command {
                 bundle = {
