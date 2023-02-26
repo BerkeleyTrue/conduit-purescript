@@ -1,4 +1,4 @@
-module Main where
+module Client.Main where
 
 import Prelude
 
