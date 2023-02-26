@@ -1,5 +1,5 @@
 {
-  description = "A purescript todomvc";
+  description = "A purescript conduit app";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -15,7 +15,9 @@
   outputs = inputs@{ self, flake-parts, nixpkgs, ... }:
     flake-parts.lib.mkFlake { inherit self inputs; } {
       systems = [ "x86_64-linux" "x86_64-darwin" ];
-      imports = [ ];
+      imports = [
+        inputs.flake-parts.flakeModules.easyOverlay
+      ];
       perSystem = { self', config, system, pkgs, lib, ... }:
         let
           ps-tools = inputs.ps-tools.legacyPackages.${system};
@@ -41,13 +43,23 @@
 
             dir = ./.;
           };
+
+          conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
+            set -x
+            ${lib.getExe pkgs.nodejs} -e 'import("./output/Server.Main/index.js").then(Main => Main.main());'
+          '';
         in
         {
+
+          overlayAttrs = {
+            inherit conduit-server;
+          };
 
           formatter = pkgs.nixpkgs-fmt;
 
           devShells.default = pkgs.mkShell {
             name = "conduit";
+
             packages = with pkgs; [
               nodejs
               (ps.command {
@@ -61,7 +73,9 @@
               purs-nix.purescript
               ps-tools.for-0_15.purescript-language-server
               ps-tools.for-0_15.purs-tidy
+              conduit-server
             ];
+
             shellHook = ''
               export NIX_SHELL_NAME="conduit-dev"
               zsh
