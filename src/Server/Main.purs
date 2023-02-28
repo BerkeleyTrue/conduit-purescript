@@ -2,24 +2,29 @@ module Server.Main (main) where
 
 import Prelude hiding ((/))
 
-import Effect.Console (log)
 import Data.Generic.Rep (class Generic)
-import HTTPurple (ServerM, ok, serve)
-import Routing.Duplex as RD
-import Routing.Duplex.Generic as RG
+import Effect.Console (log)
+import HTTPurple (Request, RouteDuplex', ServerM, ResponseM, mkRoute, noArgs, ok, serve, (/))
 
-data Route = SayHello
+data Route
+  = Home
+  | Ping
 
-derive instance Generic Route _
+derive instance genericRoute :: Generic Route _
 
-route :: RD.RouteDuplex' Route
-route = RD.root $ RG.sum
-  { "SayHello": RG.noArgs
+route :: RouteDuplex' Route
+route = mkRoute
+  { "Home": noArgs
+  , "Ping": "ping" / noArgs
   }
+
+router :: Request Route -> ResponseM
+router { route: Home } = ok "hello world!"
+router { route: Ping } = ok "pong"
 
 main :: ServerM
 main =
-  serve { port: 8000, onStarted } { route, router: const $ ok "hello world!" }
+  serve { port: 8000, onStarted } { route, router }
   where
   onStarted = do
     log "Server started"

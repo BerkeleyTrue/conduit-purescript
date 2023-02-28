@@ -46,7 +46,7 @@
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
             set -x
-            ${lib.getExe pkgs.bun} --hot src/server/main.js
+            ${lib.getExe pkgs.bun} --hot src/Server/main.js
           '';
         in
         {
