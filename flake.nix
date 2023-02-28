@@ -49,7 +49,7 @@
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
             set -x
-            ${lib.getExe pkgs.bun} --hot src/Server/main.js
+            ${lib.getExe pkgs.nodePackages.nodemon} --watch output src/Server/main.js
           '';
         in
         {
@@ -64,7 +64,6 @@
             name = "conduit";
 
             packages = with pkgs; [
-              bun
               nodejs
               (ps.command {
                 bundle = {
