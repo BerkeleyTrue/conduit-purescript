@@ -6,6 +6,7 @@ import Data.Generic.Rep (class Generic)
 import Effect.Console (log)
 import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', ServerM, catchAll, mkRoute, noArgs, notFound, ok, response, serve, (/))
 import HTTPurple.Status as Status
+import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
 
 data Route
   = Home
@@ -29,7 +30,7 @@ router _ = notFound
 
 main :: ServerM
 main =
-  serve { port: 8000, onStarted } { route, router }
+  serve { port: 8000, onStarted } { route, router: developmentLogFormat router }
   where
   onStarted = do
     log "Server started"

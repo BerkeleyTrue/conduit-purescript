@@ -39,6 +39,9 @@
 
               # server
               httpurple
+              ansi
+              formatters
+              stringutils
             ];
 
             dir = ./.;
