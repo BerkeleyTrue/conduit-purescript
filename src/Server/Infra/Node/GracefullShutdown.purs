@@ -7,6 +7,9 @@ import Effect (Effect)
 import Effect.Console (log)
 import Node.Process (onSignal, onUncaughtException)
 
+-- TODO: add way to add shutdown handlers
+
+
 gracefullShutdown :: (Effect Unit -> Effect Unit) -> Effect Unit
 gracefullShutdown shutdown = do
   let
