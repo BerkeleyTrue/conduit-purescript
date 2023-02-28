@@ -1,4 +1,4 @@
-module Server.Infra.HttPurple.GracefullShutdown where
+module Server.Infra.Node.GracefullShutdown where
 
 import Prelude
 
