@@ -4,11 +4,13 @@ import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import Effect.Console (log)
-import HTTPurple (Request, RouteDuplex', ServerM, ResponseM, mkRoute, noArgs, ok, serve, (/))
+import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', ServerM, catchAll, mkRoute, noArgs, notFound, ok, response, serve, (/))
+import HTTPurple.Status as Status
 
 data Route
   = Home
   | Ping
+  | CatchAll (Array String)
 
 derive instance genericRoute :: Generic Route _
 
@@ -16,11 +18,14 @@ route :: RouteDuplex' Route
 route = mkRoute
   { "Home": noArgs
   , "Ping": "ping" / noArgs
+  , "CatchAll": catchAll
   }
 
 router :: Request Route -> ResponseM
-router { route: Home } = ok "hello world!"
-router { route: Ping } = ok "pong"
+router { route: Home, method: Get } = ok "hello world!"
+router { route: Ping, method: Get } = ok "pong"
+router { route: CatchAll _ } = response Status.notFound "Opps, something went wrong!"
+router _ = notFound
 
 main :: ServerM
 main =
