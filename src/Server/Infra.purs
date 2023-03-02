@@ -1,16 +1,12 @@
-module Server.Infra.CreateApp where
+module Server.Infra (createApp) where
 
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import Effect (Effect)
-import Effect.Console (log)
-import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', catchAll, mkRoute, noArgs, notFound, ok, response, serve, (/))
+import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', catchAll, mkRoute, noArgs, notFound, ok, response, (/))
 import HTTPurple.Status as Status
-import Server.Infra.HTTPurple.GracefullShutdown (gracefullShutdown)
-import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
-
-type Port = Int
+import Server.Infra.HttPurple (createServer)
 
 data Route
   = Home
@@ -32,10 +28,5 @@ router { route: Ping, method: Get } = ok "pong"
 router { route: CatchAll _ } = response Status.notFound "Opps, something went wrong!"
 router _ = notFound
 
-createApp :: Port -> Effect Unit
-createApp port =
-  serve opts settings >>= gracefullShutdown
-  where
-  onStarted = log $ "Server started on port " <> show port
-  opts = { port, onStarted }
-  settings = { route, router: developmentLogFormat router }
+createApp :: Int -> Effect Unit
+createApp port = createServer route router port

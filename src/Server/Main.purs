@@ -3,7 +3,9 @@ module Server.Main (main) where
 import Prelude
 
 import Effect (Effect)
-import Server.Infra.CreateApp (createApp)
+import Server.Infra (createApp)
+
+-- TODO: move port into env config
 
 port :: Int
 port = 3000
