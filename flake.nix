@@ -49,6 +49,8 @@
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
             set -x
+            find src/Server | entr -s 'echo "compiling..."; purs-nix compile' &
+            sleep 1s
             ${lib.getExe pkgs.nodePackages.nodemon} --watch output --delay 500ms src/Server/main.js
           '';
         in
@@ -64,6 +66,7 @@
             name = "conduit";
 
             packages = with pkgs; [
+              entr
               nodejs
               (ps.command {
                 bundle = {
