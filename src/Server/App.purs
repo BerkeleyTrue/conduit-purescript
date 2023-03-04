@@ -5,9 +5,9 @@ import Prelude
 import Data.Either (Either)
 import HTTPurple (Request, ResponseM, RouteDuplex', orElse, prefix, root, (<+>))
 import Server.App.Api (ApiRoute, apiRoute, apiRouter)
-import Server.App.Meta (MetaRoutes, metaRoute, metaRouter)
+import Server.App.Meta (MetaRoute, metaRoute, metaRouter)
 
-type Route = Either ApiRoute MetaRoutes
+type Route = Either ApiRoute MetaRoute
 
 route :: RouteDuplex' Route
 route = (root $ prefix "api" apiRoute) <+> metaRoute
