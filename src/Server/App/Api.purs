@@ -3,14 +3,14 @@ module Server.App.Api (ApiRoute(..), apiRoute, apiRouter) where
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
-import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', mkRoute, noArgs, notFound, ok, (/))
+import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', noArgs, notFound, ok, sum, (/))
 
 data ApiRoute = Hello
 
 derive instance genericApiRoute :: Generic ApiRoute _
 
 apiRoute :: RouteDuplex' ApiRoute
-apiRoute = mkRoute
+apiRoute = sum
   { "Hello": "hello" / noArgs
   }
 
