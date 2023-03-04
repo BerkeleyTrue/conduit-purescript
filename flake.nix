@@ -49,7 +49,7 @@
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
             set -x
-            ${lib.getExe pkgs.nodePackages.nodemon} --watch output src/Server/main.js
+            ${lib.getExe pkgs.nodePackages.nodemon} --watch output --delay 500ms src/Server/main.js
           '';
         in
         {
