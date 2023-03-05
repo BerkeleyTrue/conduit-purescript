@@ -2,14 +2,34 @@ module Server.App.Api.Articles where
 
 import Prelude hiding ((/))
 
+import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe, fromMaybe)
-import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
+import Data.Int as Int
+import Data.Maybe (Maybe, fromMaybe, maybe)
+import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?), as)
 import Server.Infra.HttPurple.Types (Router)
+
+newtype Limit = Limit Int
+
+derive instance genericLimit :: Generic Limit _
+
+limitToString :: Limit -> String
+limitToString (Limit x) = show x
+
+stringToLimit :: String -> Either String Limit
+stringToLimit val = case (maybe (Left "Could not parse") Right <<< Int.fromString) val  of
+  Right l | l > 0 && l < 1000 -> Right $ Limit l
+  Right _ -> Left "Limit out of bounds"
+  Left mess -> Left mess
+
+
+
+limitComb :: RouteDuplex' String -> RouteDuplex' Limit
+limitComb = as limitToString stringToLimit
 
 data ArticlesRoute
   = List -- Get
-      { limit :: Maybe Int
+      { limit :: Maybe Limit
       , offset :: Maybe Int
       , favorited :: Maybe String
       , author :: Maybe String
@@ -30,7 +50,7 @@ derive instance genericArticlesRoute :: Generic ArticlesRoute _
 articlesRoute :: RouteDuplex' ArticlesRoute
 articlesRoute = prefix "articles" $ sum
   { "List": params
-      { limit: optional <<< int
+      { limit: optional <<< limitComb
       , offset: optional <<< int
       , favorited: optional <<< string
       , author: optional <<< string
@@ -60,7 +80,7 @@ articlesRouter
   <> (if (tag' == "") then "" else "with the following tag " <> tag')
 
   where
-  limit' = fromMaybe 20 limit
+  Limit limit' = fromMaybe (Limit 20) limit -- rethrow if query is out of bounds?
   offset' = fromMaybe 0 offset
   favorited' = fromMaybe "" favorited
   author' = fromMaybe "" author
