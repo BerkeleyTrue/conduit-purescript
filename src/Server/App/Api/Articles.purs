@@ -4,7 +4,7 @@ import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
-import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, prefix, segment, string, sum, (/), (?))
+import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
 import Server.Infra.HttPurple.Types (Router)
 
 data ArticlesRoute
@@ -29,7 +29,7 @@ derive instance genericArticlesRoute :: Generic ArticlesRoute _
 
 articlesRoute :: RouteDuplex' ArticlesRoute
 articlesRoute = prefix "articles" $ sum
-  { "List": "" ?
+  { "List": params
       { limit: optional <<< int
       , offset: optional <<< int
       , favorited: optional <<< string
