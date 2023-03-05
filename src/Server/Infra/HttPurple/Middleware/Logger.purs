@@ -16,10 +16,9 @@ import Effect.Aff as Effect.Aff
 import Effect.Class as Effect.Class
 import Effect.Class.Console as Effect.Class.Console
 import Effect.Now as Effect.Now
-import HTTPurple (Request, Response, ResponseM)
+import HTTPurple (Request, Response)
 import HTTPurple as HTTP
-
-type Middleware' route = (Request route -> ResponseM) -> Request route -> ResponseM
+import Server.Infra.HttPurple.Types (Middleware')
 
 -- | The lifecycle functions around logging.
 -- |

@@ -7,7 +7,8 @@ module Server.App.Api.User
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
-import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', noArgs, notFound, ok, prefix, sum, (/))
+import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, prefix, sum, (/))
+import Server.Infra.HttPurple.Types (Router)
 
 data UserRoute = Authen | User
 
@@ -19,7 +20,7 @@ userRoute = prefix "user" $ sum
   , "User": noArgs
   }
 
-userRouter :: Request UserRoute -> ResponseM
+userRouter :: Router UserRoute
 userRouter { route: Authen, method: Post } = ok "authenticate"
 userRouter { route: Authen } = notFound
 

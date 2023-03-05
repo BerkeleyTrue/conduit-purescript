@@ -9,9 +9,9 @@ import HTTPurple (Request, ResponseM, RouteDuplex', response, serve)
 import HTTPurple.Status as Status
 import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
 import Server.Infra.Node.GracefullShutdown (gracefullShutdown)
+import Server.Infra.HttPurple.Types (Router)
 
-
-notFoundHandler :: Request Unit -> ResponseM
+notFoundHandler :: Router Unit
 notFoundHandler = const $ response Status.notFound "Oops, something went wrong"
 
 createServer

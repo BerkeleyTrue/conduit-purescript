@@ -4,10 +4,11 @@ import Prelude hiding ((/))
 
 import Data.Either (Either)
 import Data.Generic.Rep (class Generic)
-import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', noArgs, notFound, ok, orElse, sum, (/), (<+>))
+import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, orElse, sum, (/), (<+>))
 import Server.App.Api.Articles (ArticlesRoute, articlesRoute, articlesRouter)
 import Server.App.Api.Profiles (ProfilesRoute, profilesRoute, profilesRouter)
 import Server.App.Api.User (UserRoute, userRoute, userRouter)
+import Server.Infra.HttPurple.Types (Router)
 
 data ApiRootRoute = Hello
 
@@ -20,9 +21,9 @@ apiRoute = articlesRoute <+> profilesRoute <+> userRoute <+> sum
   { "Hello": "hello" / noArgs
   }
 
-apiRootRouter :: Request ApiRootRoute -> ResponseM
+apiRootRouter :: Router ApiRootRoute
 apiRootRouter { route: Hello, method: Get } = ok "Hello Api"
 apiRootRouter { route: Hello } = notFound
 
-apiRouter :: Request ApiRoute -> ResponseM
+apiRouter :: Router ApiRoute
 apiRouter = orElse articlesRouter $ orElse profilesRouter $ orElse userRouter apiRootRouter

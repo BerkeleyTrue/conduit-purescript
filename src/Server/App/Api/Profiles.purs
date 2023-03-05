@@ -7,7 +7,8 @@ module Server.App.Api.Profiles
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
-import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', notFound, ok, prefix, segment, string, sum, (/))
+import HTTPurple (Method(..), RouteDuplex', notFound, ok, prefix, segment, string, sum, (/))
+import Server.Infra.HttPurple.Types (Router)
 
 data ProfilesRoute
   = Profile String
@@ -21,7 +22,7 @@ profilesRoute = prefix "profiles" $ sum
   , "Follow": string segment / "follow"
   }
 
-profilesRouter :: Request ProfilesRoute -> ResponseM
+profilesRouter :: Router ProfilesRoute
 profilesRouter { method: Get, route: Profile username } = ok $ "Get " <> username <> "'s profile"
 profilesRouter { route: Profile _ } = notFound
 profilesRouter { method: Post, route: Follow username } = ok $ "Follow " <> username <> "'s profile"
