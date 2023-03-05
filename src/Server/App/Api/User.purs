@@ -1,4 +1,8 @@
-module Server.App.Api.User where
+module Server.App.Api.User
+  ( UserRoute(..)
+  , userRoute
+  , userRouter
+  ) where
 
 import Prelude hiding ((/))
 
@@ -7,7 +11,7 @@ import HTTPurple (Method(..), Request, ResponseM, RouteDuplex', noArgs, notFound
 
 data UserRoute = Authen | User
 
-derive instance userRoutes :: Generic UserRoute _
+derive instance genericUserRoute :: Generic UserRoute _
 
 userRoute :: RouteDuplex' UserRoute
 userRoute = prefix "user" $ sum

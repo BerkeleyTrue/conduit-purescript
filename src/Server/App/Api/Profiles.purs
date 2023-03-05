@@ -1,4 +1,8 @@
-module Server.App.Api.Profiles where
+module Server.App.Api.Profiles
+  ( ProfilesRoute(..)
+  , profilesRoute
+  , profilesRouter
+  ) where
 
 import Prelude hiding ((/))
 
@@ -18,8 +22,8 @@ profilesRoute = prefix "profiles" $ sum
   }
 
 profilesRouter :: Request ProfilesRoute -> ResponseM
-profilesRouter { method: Get, route: Profile username } = ok $ "Get "<> username <> "'s profile"
+profilesRouter { method: Get, route: Profile username } = ok $ "Get " <> username <> "'s profile"
 profilesRouter { route: Profile _ } = notFound
-profilesRouter { method: Post, route: Follow username } = ok $ "Follow "<> username <> "'s profile"
-profilesRouter { method: Delete, route: Follow username } = ok $ "Unfollow "<> username <> "'s profile"
+profilesRouter { method: Post, route: Follow username } = ok $ "Follow " <> username <> "'s profile"
+profilesRouter { method: Delete, route: Follow username } = ok $ "Unfollow " <> username <> "'s profile"
 profilesRouter { route: Follow _ } = notFound
