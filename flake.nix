@@ -31,6 +31,7 @@
               console
               effect
               prelude
+              slug
 
               # client
               halogen

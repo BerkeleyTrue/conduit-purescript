@@ -2,55 +2,37 @@ module Server.App.Api.Articles where
 
 import Prelude hiding ((/))
 
-import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Int as Int
-import Data.Maybe (Maybe, fromMaybe, maybe)
-import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?), as)
+import Data.Maybe (Maybe, fromMaybe)
+import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
+import Server.Infra.Data.Route as Route
 import Server.Infra.HttPurple.Types (Router)
-
-newtype Limit = Limit Int
-
-derive instance genericLimit :: Generic Limit _
-
-limitToString :: Limit -> String
-limitToString (Limit x) = show x
-
-stringToLimit :: String -> Either String Limit
-stringToLimit val = case (maybe (Left "Could not parse") Right <<< Int.fromString) val  of
-  Right l | l > 0 && l < 1000 -> Right $ Limit l
-  Right _ -> Left "Limit out of bounds"
-  Left mess -> Left mess
-
-
-
-limitComb :: RouteDuplex' String -> RouteDuplex' Limit
-limitComb = as limitToString stringToLimit
+import Slug (Slug)
+import Slug as Slug
 
 data ArticlesRoute
   = List -- Get
-      { limit :: Maybe Limit
+      { limit :: Maybe Route.Limit
       , offset :: Maybe Int
-      , favorited :: Maybe String
-      , author :: Maybe String
+      , favorited :: Maybe String -- favorited by
+      , author :: Maybe String -- written by
       , tag :: Maybe String
       }
-
   | Feed -- Get
       { limit :: Maybe Int
       , offset :: Maybe Int
       }
-  | BySlug String -- get, put, delete
-  | Comments String
-  | Comment String Int
-  | Fav String
+  | BySlug Slug -- get, put, delete
+  | Comments Slug
+  | Comment Slug Int
+  | Fav Slug
 
 derive instance genericArticlesRoute :: Generic ArticlesRoute _
 
 articlesRoute :: RouteDuplex' ArticlesRoute
 articlesRoute = prefix "articles" $ sum
   { "List": params
-      { limit: optional <<< limitComb
+      { limit: optional <<< Route.limit
       , offset: optional <<< int
       , favorited: optional <<< string
       , author: optional <<< string
@@ -60,16 +42,21 @@ articlesRoute = prefix "articles" $ sum
       { limit: optional <<< int
       , offset: optional <<< int
       }
-  , "BySlug": string segment
-  , "Comments": string segment / "comments"
-  , "Comment": string segment / "comment" / int segment
-  , "Fav": string segment / "favorite"
+  , "BySlug": Route.slug segment
+  , "Comments": Route.slug segment / "comments"
+  , "Comment": Route.slug segment / "comment" / int segment
+  , "Fav": Route.slug segment / "favorite"
   }
 
 articlesRouter :: Router ArticlesRoute
 articlesRouter
   { route: List
-      { limit, offset, favorited, author, tag }
+      { limit
+      , offset
+      , favorited
+      , author
+      , tag
+      }
   , method: Get
   } = ok $ "get " <> show limit'
   <> " articles after "
@@ -80,7 +67,7 @@ articlesRouter
   <> (if (tag' == "") then "" else "with the following tag " <> tag')
 
   where
-  Limit limit' = fromMaybe (Limit 20) limit -- rethrow if query is out of bounds?
+  Route.Limit limit' = fromMaybe (Route.Limit 20) limit -- rethrow if query is out of bounds?
   offset' = fromMaybe 0 offset
   favorited' = fromMaybe "" favorited
   author' = fromMaybe "" author
@@ -100,18 +87,18 @@ articlesRouter { route: Feed { limit, offset }, method: Get } = ok
   offset' = fromMaybe 0 offset
 articlesRouter { route: Feed _ } = notFound
 
-articlesRouter { route: BySlug slug, method: Get } = ok $ "Get by Slug: " <> slug
-articlesRouter { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> slug
-articlesRouter { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> slug
+articlesRouter { route: BySlug slug, method: Get } = ok $ "Get by Slug: " <> Slug.toString slug
+articlesRouter { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> Slug.toString slug
+articlesRouter { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> Slug.toString slug
 articlesRouter { route: BySlug _ } = notFound
 
-articlesRouter { route: Comments slug, method: Get } = ok $ "get comments for" <> slug
-articlesRouter { route: Comments slug, method: Post } = ok $ "post comments for" <> slug
+articlesRouter { route: Comments slug, method: Get } = ok $ "get comments for" <> Slug.toString slug
+articlesRouter { route: Comments slug, method: Post } = ok $ "post comments for" <> Slug.toString slug
 articlesRouter { route: Comments _ } = notFound
 
-articlesRouter { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> slug
+articlesRouter { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> Slug.toString slug
 articlesRouter { route: Comment _ _ } = notFound
 
-articlesRouter { route: Fav slug, method: Get } = ok $ "fav an article " <> slug
-articlesRouter { route: Fav slug, method: Delete } = ok $ "unfav an article " <> slug
+articlesRouter { route: Fav slug, method: Get } = ok $ "fav an article " <> Slug.toString slug
+articlesRouter { route: Fav slug, method: Delete } = ok $ "unfav an article " <> Slug.toString slug
 articlesRouter { route: Fav _ } = notFound
