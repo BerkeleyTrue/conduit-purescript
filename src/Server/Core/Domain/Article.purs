@@ -1,13 +1,14 @@
-module Server.Domain.Models.Article where
+module Server.Core.Domain.Article where
 
 import Data.Bounded (class Ord)
 import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
 import Data.Ord (compare)
-import Server.Domain.Models.Profile (Profile)
+import Server.Core.Domain.Profile (Profile)
+import Slug (Slug)
 
 data Article = Article
-  { slug :: String
+  { slug :: Slug
   , title :: String
   , description :: String
   , body :: String

@@ -32,6 +32,7 @@
               effect
               prelude
               slug
+              unicode
 
               # client
               halogen

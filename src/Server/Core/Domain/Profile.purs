@@ -1,4 +1,4 @@
-module Server.Domain.Models.Profile (Profile(..)) where
+module Server.Core.Domain.Profile (Profile(..)) where
 
 import Data.Bounded (class Ord)
 import Data.Eq (class Eq)
