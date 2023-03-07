@@ -1,4 +1,4 @@
-module Server.App.Api.Profiles
+module Server.App.Drivers.Profiles
   ( ProfilesRoute(..)
   , profilesRoute
   , profilesRouter

@@ -1,4 +1,4 @@
-module Server.App.Api.Tags (TagsRoute(..), tagsRoute, tagsRouter) where
+module Server.App.Drivers.Tags (TagsRoute(..), tagsRoute, tagsRouter) where
 
 import Prelude
 

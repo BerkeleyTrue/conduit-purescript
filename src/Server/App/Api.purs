@@ -1,13 +1,18 @@
-module Server.App.Api (ApiRoute, ApiRootRoute(..), apiRoute, apiRouter) where
+module Server.App.Api
+  ( ApiRoute
+  , ApiRootRoute(..)
+  , apiRoute
+  , apiRouter
+  ) where
 
 import Prelude hiding ((/))
 
 import Data.Either (Either)
 import Data.Generic.Rep (class Generic)
 import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, orElse, sum, (/), (<+>))
-import Server.App.Api.Articles (ArticlesRoute, articlesRoute, articlesRouter)
-import Server.App.Api.Profiles (ProfilesRoute, profilesRoute, profilesRouter)
-import Server.App.Api.User (UserRoute, userRoute, userRouter)
+import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, articlesRouter)
+import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, profilesRouter)
+import Server.App.Drivers.User (UserRoute, userRoute, userRouter)
 import Server.Infra.HttPurple.Types (Router)
 
 data ApiRootRoute = Hello

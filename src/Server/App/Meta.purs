@@ -1,4 +1,8 @@
-module Server.App.Meta (MetaRoute(..), metaRouter, metaRoute) where
+module Server.App.Meta
+  ( MetaRoute(..)
+  , metaRouter
+  , metaRoute
+  ) where
 
 import Prelude hiding ((/))
 

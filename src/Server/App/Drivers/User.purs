@@ -1,4 +1,4 @@
-module Server.App.Api.User
+module Server.App.Drivers.User
   ( UserRoute(..)
   , userRoute
   , userRouter

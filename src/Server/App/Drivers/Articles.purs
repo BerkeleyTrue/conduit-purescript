@@ -1,4 +1,8 @@
-module Server.App.Api.Articles where
+module Server.App.Drivers.Articles
+  ( ArticlesRoute(..)
+  , articlesRoute
+  , articlesRouter
+  ) where
 
 import Prelude hiding ((/))
 
