@@ -24,7 +24,7 @@ newtype ProfileRepo m = ProfileRepo
   }
 
 newtype ArticleRepo m = ArticleRepo
-  { create :: Article -> m Unit
+  { create :: Article -> m (Either String Unit)
   , getById :: ArticleId -> m (Maybe Article)
   , getBySlug :: Slug -> m (Maybe Article)
   , list :: m (List Article)
@@ -33,7 +33,7 @@ newtype ArticleRepo m = ArticleRepo
   }
 
 newtype CommentRepo m = CommentRepo
-  { create :: Comment -> m Unit
+  { create :: Comment -> m (Either String Unit)
   , getById :: CommentId -> m (Maybe Comment)
   , getByArticle :: ArticleId -> m (Maybe Comment)
   , list :: m (List Comment)
