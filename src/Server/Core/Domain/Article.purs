@@ -1,23 +1,31 @@
 module Server.Core.Domain.Article where
 
 import Data.Bounded (class Ord)
+import Data.Date (Date)
 import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe)
 import Data.Ord (compare)
+import Data.UUID (UUID)
 import Server.Core.Domain.Profile (Profile)
 import Slug (Slug)
 
+newtype ArticleId = ArticleId UUID
+
+derive instance eqArticleId :: Eq ArticleId
+
 data Article = Article
-  { slug :: Slug
+  { id :: ArticleId
+  , slug :: Slug
   , title :: String
   , description :: String
+  , author :: Profile
   , body :: String
   , tagList :: Array String
-  , createdAt :: String
-  , updatedAt :: String
   , favorited :: Boolean
   , favoritesCount :: Int
-  , author :: Profile
+  , createdAt :: Date
+  , updatedAt :: Maybe Date
   }
 
 derive instance genericArticle :: Generic Article _

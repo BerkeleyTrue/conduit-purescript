@@ -4,9 +4,10 @@ import Data.Bounded (class Ord)
 import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
+import Server.Core.Domain.User (Username)
 
 data Profile = Profile
-  { username :: String
+  { username :: Username
   , bio :: Maybe String
   , image :: Maybe String
   , following :: Boolean

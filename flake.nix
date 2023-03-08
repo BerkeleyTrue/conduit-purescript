@@ -33,6 +33,7 @@
               prelude
               slug
               unicode
+              uuid
 
               # client
               halogen
