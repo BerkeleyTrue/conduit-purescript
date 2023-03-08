@@ -2,6 +2,7 @@ module Server.Core.Ports.Ports where
 
 import Prelude
 
+import Data.Either (Either)
 import Data.List (List)
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId)
@@ -10,28 +11,32 @@ import Server.Core.Domain.Profile (Profile)
 import Server.Core.Domain.User (User, UserId, Username)
 import Slug (Slug)
 
-class UserRepo m where
-  createUser :: User -> m Unit
-  getUserById :: UserId -> m (Maybe User)
-  getUserByUsername :: Username -> m (Maybe User)
-  updateUser :: UserId -> (User -> User) -> m Unit
+newtype UserRepo m = UserRepo
+  { create :: User -> m (Either String User)
+  , getById :: UserId -> m (Maybe User)
+  , getByUsername :: Username -> m (Maybe User)
+  , update :: UserId -> (User -> User) -> m Unit
+  }
 
-class ProfileRepo m where
-  getProfile :: UserId -> m (Maybe Profile)
-  updateProfile :: UserId -> (Profile -> Profile) -> m Unit
+newtype ProfileRepo m = ProfileRepo
+  { get :: UserId -> m (Maybe Profile)
+  , update :: UserId -> (Profile -> Profile) -> m Unit
+  }
 
-class ArticleRepo m where
-  createArticle :: Article -> m Unit
-  getArticleById :: ArticleId -> m (Maybe Article)
-  getArticleBySlug :: Slug -> m (Maybe Article)
-  listArticles :: m (List Article)
-  updateArticle :: ArticleId -> (Article -> Article) -> m Unit
-  deleteArticle :: ArticleId -> m Unit
+newtype ArticleRepo m = ArticleRepo
+  { create :: Article -> m Unit
+  , getById :: ArticleId -> m (Maybe Article)
+  , getBySlug :: Slug -> m (Maybe Article)
+  , list :: m (List Article)
+  , update :: ArticleId -> (Article -> Article) -> m Unit
+  , delete :: ArticleId -> m Unit
+  }
 
-class CommentRepo m where
-  createComment :: Comment -> m Unit
-  getCommentById :: CommentId -> m (Maybe Comment)
-  getCommentByArticle :: ArticleId -> m (Maybe Comment)
-  listComments :: m (List Comment)
-  updateComment :: CommentId -> (Comment -> Comment) -> m Unit
-  deleteComment :: CommentId -> m Unit
+newtype CommentRepo m = CommentRepo
+  { create :: Comment -> m Unit
+  , getById :: CommentId -> m (Maybe Comment)
+  , getByArticle :: ArticleId -> m (Maybe Comment)
+  , list :: m (List Comment)
+  , update :: CommentId -> (Comment -> Comment) -> m Unit
+  , delete :: CommentId -> m Unit
+  }
