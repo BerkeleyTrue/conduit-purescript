@@ -7,20 +7,14 @@ import Data.List (List)
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId)
 import Server.Core.Domain.Comment (CommentId, Comment)
-import Server.Core.Domain.Profile (Profile)
-import Server.Core.Domain.User (User, UserId, Username)
+import Server.Core.Domain.User (User, UserId, UserRegistration, Username)
 import Slug (Slug)
 
 newtype UserRepo m = UserRepo
-  { create :: User -> m (Either String User)
+  { create :: UserRegistration -> m (Either String User)
   , getById :: UserId -> m (Maybe User)
   , getByUsername :: Username -> m (Maybe User)
   , update :: UserId -> (User -> User) -> m Unit
-  }
-
-newtype ProfileRepo m = ProfileRepo
-  { get :: UserId -> m (Maybe Profile)
-  , update :: UserId -> (Profile -> Profile) -> m Unit
   }
 
 newtype ArticleRepo m = ArticleRepo

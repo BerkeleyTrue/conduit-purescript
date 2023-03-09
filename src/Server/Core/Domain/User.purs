@@ -1,7 +1,12 @@
 module Server.Core.Domain.User
   ( User(..)
+  , UserId(..)
+  , UserInfo(..)
+  , PublicProfile(..)
+  , Authentication(..)
+  , UserRegistration(..)
+  , MetaInfo(..)
   , Username
-  , UserId
   , UsernameValidationErrors(..)
   , makeUsername
   ) where
@@ -25,20 +30,49 @@ newtype UserId = UserId UUID
 instance showUsername :: Show Username where
   show (Username username) = "username: " <> username
 
+derive instance eqUserId :: Eq UserId
+derive instance ordUserId :: Ord UserId
+
+newtype UserInfo = UserInfo
+  { username :: Username
+  , email :: String
+  , bio :: Maybe String
+  , image :: Maybe String
+  }
+
+newtype Authentication = Authentication
+  { token :: String
+  }
+
+newtype UserRegistration = UserRegistration
+  { username :: Username
+  , email :: String
+  , password :: String
+  }
+
+newtype MetaInfo = MetaInfo
+  { createdAt :: Date
+  , updatedAt :: Maybe Date
+  }
+
+newtype PublicProfile = Profile
+  { username :: Username
+  , bio :: Maybe String
+  , image :: Maybe String
+  }
+
+data User =
+  User
+    UserId
+    UserInfo
+    (Maybe Authentication)
+    (Maybe UserRegistration)
+    (Maybe MetaInfo)
+
 data UsernameValidationErrors
   = InvalidCharacters
   | TooShort
   | MustStartWithLetter
-
-data User = User
-  { id :: UserId
-  , username :: Username
-  , email :: String
-  , bio :: String
-  , image :: Maybe String
-  , createdAt :: Date
-  , updatedAt :: Date
-  }
 
 makeUsername :: String -> Either UsernameValidationErrors Username
 makeUsername username =
