@@ -33,41 +33,45 @@ instance showUsername :: Show Username where
 derive instance eqUserId :: Eq UserId
 derive instance ordUserId :: Ord UserId
 
-newtype UserInfo = UserInfo
+type UserInfo =
   { username :: Username
   , email :: String
   , bio :: Maybe String
   , image :: Maybe String
   }
 
-newtype Authentication = Authentication
+type Authentication =
   { token :: String
   }
 
-newtype UserRegistration = UserRegistration
+type UserRegistration =
   { username :: Username
   , email :: String
   , password :: String
   }
 
-newtype MetaInfo = MetaInfo
+type MetaInfo =
   { createdAt :: Date
   , updatedAt :: Maybe Date
   }
 
-newtype PublicProfile = Profile
+type PublicProfile =
   { username :: Username
   , bio :: Maybe String
   , image :: Maybe String
+  , following :: Boolean
   }
 
-data User =
-  User
-    UserId
-    UserInfo
-    (Maybe Authentication)
-    (Maybe UserRegistration)
-    (Maybe MetaInfo)
+type User =
+  { id :: UserId
+  , username :: Username
+  , email :: String
+  , password :: String
+  , bio :: Maybe String
+  , image :: Maybe String
+  , createdAt :: Date
+  , updatedAt :: Maybe Date
+  }
 
 data UsernameValidationErrors
   = InvalidCharacters

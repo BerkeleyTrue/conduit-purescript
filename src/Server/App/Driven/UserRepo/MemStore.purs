@@ -17,6 +17,7 @@ import Effect.AVar (AVar)
 import Effect.Aff (Aff)
 import Effect.Aff.AVar as Ref
 import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Now (now, nowDate)
 import Server.Core.Domain.User (User(..), UserId(..), UserInfo(..), UserRegistration(..), Username)
 import Server.Core.Ports.Ports (UserRepo(..))
 
@@ -29,14 +30,23 @@ type MemStore =
   }
 
 createUser :: AVar MemStore -> UserRegistration -> Aff (Either String User)
-createUser storeRef (UserRegistration { username, email, password }) = do
+createUser storeRef { username, email, password } = do
   store@{ byId } <- Ref.read storeRef
-  uuid <- liftEffect UUID.genUUID
+  userId <- liftEffect UUID.genUUID <#> UserId
+  createdNow <- nowDate
+
   let
-    userInfo = UserInfo { username, email, bio: Nothing, image: Nothing }
-    userRegistration = UserRegistration { username, email, password }
-    user = User (UserId uuid) userInfo Nothing (Just userRegistration) Nothing
-    newStore = store { byId = Map.insert (UserId uuid) user $ store.byId }
+    user =
+      { id: userId
+      , username
+      , email
+      , password
+      , createdAt: createdNow
+      , updatedAt: Nothing
+      , bio: Nothing
+      , image: Nothing
+      }
+    newStore = store { byId = Map.insert userId user $ store.byId }
 
   Ref.put newStore storeRef
   pure $ Right user
@@ -57,7 +67,7 @@ getUserByUsername storeRef username = do
 
 mkMemoryUserRepo :: UserMap -> Aff (UserRepo Aff)
 mkMemoryUserRepo initialState = do
-  usernameToId <- foldl (\acc (_ /\ (User userId (UserInfo { username }) _ _ _)) -> Map.insert username userId acc) Map.empty $ Map.toUnfoldable initialState
+  usernameToId <- foldl (\acc (userId /\ { username }) -> Map.insert username userId acc) Map.empty $ Map.toUnfoldable initialState
   storeRef <- Ref.new { byId: initialState, usernameToId }
   pure $ UserRepo
     { create: createUser storeRef
