@@ -4,7 +4,6 @@ module Server.Core.Domain.User
   , UserInfo(..)
   , PublicProfile(..)
   , Authentication(..)
-  , UserRegistration(..)
   , MetaInfo(..)
   , Username
   , UsernameValidationErrors(..)
@@ -44,12 +43,6 @@ type Authentication =
   { token :: String
   }
 
-type UserRegistration =
-  { username :: Username
-  , email :: String
-  , password :: String
-  }
-
 type MetaInfo =
   { createdAt :: Date
   , updatedAt :: Maybe Date
@@ -63,7 +56,7 @@ type PublicProfile =
   }
 
 type User =
-  { id :: UserId
+  { userId :: UserId
   , username :: Username
   , email :: String
   , password :: String

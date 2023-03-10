@@ -7,18 +7,32 @@ import Data.List (List)
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId)
 import Server.Core.Domain.Comment (CommentId, Comment)
-import Server.Core.Domain.User (User, UserId, UserRegistration, Username)
+import Server.Core.Domain.User (User, UserId, Username)
 import Slug (Slug)
 
+type UserCreateInput =
+  { username :: Username
+  , email :: String
+  , password :: String
+  }
+
 newtype UserRepo m = UserRepo
-  { create :: UserRegistration -> m (Either String User)
+  { create :: UserCreateInput -> m (Either String User)
   , getById :: UserId -> m (Maybe User)
   , getByUsername :: Username -> m (Maybe User)
   , update :: UserId -> (User -> User) -> m (Either String User)
   }
 
+type ArticleCreateInput =
+  { title :: String
+  , description :: String
+  , body :: String
+  , tagList :: Maybe (Array String)
+  , authorId :: UserId
+  }
+
 newtype ArticleRepo m = ArticleRepo
-  { create :: Article -> m (Either String Unit)
+  { create :: ArticleCreateInput -> m (Either String Unit)
   , getById :: ArticleId -> m (Maybe Article)
   , getBySlug :: Slug -> m (Maybe Article)
   , list :: m (List Article)
