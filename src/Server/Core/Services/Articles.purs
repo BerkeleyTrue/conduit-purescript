@@ -1,7 +1,5 @@
 module Server.Core.Services.Articles where
 
-import Prelude
-
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId)
 import Server.Core.Ports.Ports (ArticleRepo(..))

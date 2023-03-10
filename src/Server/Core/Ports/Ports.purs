@@ -14,7 +14,7 @@ newtype UserRepo m = UserRepo
   { create :: UserRegistration -> m (Either String User)
   , getById :: UserId -> m (Maybe User)
   , getByUsername :: Username -> m (Maybe User)
-  , update :: UserId -> (User -> User) -> m Unit
+  , update :: UserId -> (User -> User) -> m (Either String User)
   }
 
 newtype ArticleRepo m = ArticleRepo

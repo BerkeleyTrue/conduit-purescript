@@ -4,30 +4,26 @@ import Prelude
 
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Effect.Class (class MonadEffect)
-import Server.Core.Domain.User (User, UserId)
+import Effect.Aff (Aff)
+import Server.Core.Domain.User (User, UserId, UserRegistration)
 import Server.Core.Ports.Ports (UserRepo(..))
 
 newtype UserService m = UserService
-  { createUser :: User -> m (Either String User)
+  { createUser :: UserRegistration -> m (Either String User)
   , findUser :: UserId -> m (Either String User)
   }
 
-findUser :: forall m. MonadEffect m => UserRepo m -> UserId -> m (Either String User)
+findUser :: UserRepo Aff -> UserId -> Aff (Either String User)
 findUser (UserRepo { getById }) userId = do
   res <- getById userId
   pure $ case res of
     Just user -> Right user
     Nothing -> Left "User not found"
 
-createUser :: forall m. MonadEffect m => UserRepo m -> User -> m (Either String User)
-createUser (UserRepo { create }) user = do
-  res <- create user
-  pure $ case res of
-    Right _ -> Right user
-    Left _ -> Left "User already exists"
+createUser :: UserRepo Aff -> UserRegistration -> Aff (Either String User)
+createUser (UserRepo { create }) userReg = create userReg
 
-mkUserService :: forall m. MonadEffect m => UserRepo m -> UserService m
+mkUserService :: UserRepo Aff -> UserService Aff
 mkUserService repo = UserService
   { createUser: createUser repo
   , findUser: findUser repo
