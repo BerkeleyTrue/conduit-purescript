@@ -27,17 +27,17 @@ type ArticleCreateInput =
   { title :: String
   , description :: String
   , body :: String
-  , tagList :: Maybe (Array String)
+  , tagList :: Maybe (List String)
   , authorId :: UserId
   }
 
 newtype ArticleRepo m = ArticleRepo
   { create :: ArticleCreateInput -> m (Either String Article)
-  , getById :: ArticleId -> m (Maybe Article)
-  , getBySlug :: Slug -> m (Maybe Article)
+  , getById :: ArticleId -> m (Either String Article)
+  , getBySlug :: Slug -> m (Either String Article)
   , list :: m (List Article)
-  , update :: ArticleId -> (Article -> Article) -> m Unit
-  , delete :: ArticleId -> m Unit
+  , update :: ArticleId -> (Article -> Article) -> m (Either String Article)
+  , delete :: ArticleId -> m (Either String Unit)
   }
 
 newtype CommentRepo m = CommentRepo

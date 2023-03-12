@@ -1,17 +1,17 @@
-module Server.App.Driven.ArticleRepo.MemStore where
+module Server.App.Driven.ArticleRepo.MemStore
+  ( mkMemoryArticleStore
+  ) where
 
 import Prelude
 
-import Control.Monad.Cont (lift)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (ExceptT(..), runExceptT)
-import Control.Monad.List.Trans (ListT, foldl)
-import Data.Array (fromFoldable)
-import Data.Either (Either(..), note)
+import Control.Monad.Except (except, runExceptT)
+import Data.Either (Either, note)
+import Data.Foldable (foldl)
+import Data.List (List(..))
+import Data.List as List
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Tuple (Tuple)
-import Data.Tuple.Nested ((/\))
 import Data.UUID (genUUID)
 import Effect.AVar (AVar)
 import Effect.Aff (Aff)
@@ -35,9 +35,9 @@ type MemStore =
 createArticle :: AVar MemStore -> ArticleCreateInput -> Aff (Either String Article)
 createArticle storeRef { title, description, body, tagList, authorId } = runExceptT do
 
-  store@{ byId, slugToId } <- liftAff $ Avar.take storeRef
+  { byId, slugToId } <- liftAff $ Avar.take storeRef
 
-  (slug :: Slug) <- case generate title of
+  slug <- case generate title of
     Just slug -> do
       if Map.member slug slugToId then
         throwError $ "Expected unique slug but found a duplicate for " <> (show slug)
@@ -57,25 +57,62 @@ createArticle storeRef { title, description, body, tagList, authorId } = runExce
       , slug
       , authorId
       , favoritesCount: 0
-      , tagList: fromMaybe [] tagList
+      , tagList: fromMaybe Nil tagList
       , createdAt: now
       , updatedAt: Nothing
       }
-    newStore = { byId: Map.insert articleId article byId, slugToId: Map.insert slug articleId slugToId }
+    newStore =
+      { byId: Map.insert articleId article byId
+      , slugToId: Map.insert slug articleId slugToId
+      }
 
   liftAff $ Avar.put newStore storeRef
   pure article
 
+getArticleById :: AVar MemStore -> ArticleId -> Aff (Either String Article)
+getArticleById storeRef articleId = runExceptT do
+  { byId } <- liftAff $ Avar.take storeRef
+  except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+
+getArticleBySlug :: AVar MemStore -> Slug -> Aff (Either String Article)
+getArticleBySlug storeRef slug = runExceptT do
+  { slugToId, byId } <- liftAff $ Avar.take storeRef
+  articleId <- except $ note ("Could not find article with slug " <> show slug) $ Map.lookup slug slugToId
+  except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+
+listArticles :: AVar MemStore -> Aff (List Article)
+listArticles storeRef = do
+  { byId } <- liftAff $ Avar.take storeRef
+  pure $ foldl (\acc article -> (acc <> List.singleton article)) (Nil :: List Article) $ Map.values byId
+
+updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Aff (Either String Article)
+updateArticle storeRef articleId updateFn = runExceptT do
+  { byId, slugToId } <- liftAff $ Avar.take storeRef
+  article <- except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+
+  let
+    updatedArticle = updateFn article
+    newStore = { byId: Map.insert articleId updatedArticle byId, slugToId }
+
+  liftAff $ Avar.put newStore storeRef
+  pure updatedArticle
+
+deleteArticle :: AVar MemStore -> ArticleId -> Aff (Either String Unit)
+deleteArticle storeRef articleId = runExceptT do
+  { byId, slugToId } <- liftAff $ Avar.take storeRef
+  (Article { slug }) <- except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  liftAff $ Avar.put { byId: Map.delete articleId byId, slugToId: Map.delete slug slugToId } storeRef
+
 mkMemoryArticleStore :: ArticleMap -> Aff (ArticleRepo Aff)
 mkMemoryArticleStore initialState = do
-  slugToId <- foldl (\acc (articleId /\ (Article { slug })) -> Map.insert slug articleId acc) Map.empty $ Map.toUnfoldable initialState
+  let (slugToId :: SlugToArticle) = foldl (\acc (Article { articleId, slug }) -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
   storeRef <- AVar.new { byId: initialState, slugToId }
   pure $
     ArticleRepo
       { create: createArticle storeRef
-      , getById: ?_
-      , getBySlug: ?_
-      , list: ?_
-      , update: ?_
-      , delete: ?_
+      , getById: getArticleById storeRef
+      , getBySlug: getArticleBySlug storeRef
+      , list: listArticles storeRef
+      , update: updateArticle storeRef
+      , delete: deleteArticle storeRef
       }
