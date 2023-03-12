@@ -24,10 +24,13 @@ newtype Username = Username String
 derive instance eqUsername :: Eq Username
 derive instance ordUsername :: Ord Username
 
-newtype UserId = UserId UUID
-
 instance showUsername :: Show Username where
   show (Username username) = "username: " <> username
+
+newtype UserId = UserId UUID
+
+instance showUserId :: Show UserId where
+  show (UserId userId) = "userId: " <> show userId
 
 derive instance eqUserId :: Eq UserId
 derive instance ordUserId :: Ord UserId

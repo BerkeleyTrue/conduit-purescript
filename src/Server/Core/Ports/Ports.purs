@@ -18,8 +18,8 @@ type UserCreateInput =
 
 newtype UserRepo m = UserRepo
   { create :: UserCreateInput -> m (Either String User)
-  , getById :: UserId -> m (Maybe User)
-  , getByUsername :: Username -> m (Maybe User)
+  , getById :: UserId -> m (Either String User)
+  , getByUsername :: Username -> m (Either String User)
   , update :: UserId -> (User -> User) -> m (Either String User)
   }
 
@@ -40,11 +40,17 @@ newtype ArticleRepo m = ArticleRepo
   , delete :: ArticleId -> m (Either String Unit)
   }
 
+type CommentCreateInput =
+  { body :: String
+  , authorId :: UserId
+  , articleId :: ArticleId
+  }
+
 newtype CommentRepo m = CommentRepo
-  { create :: Comment -> m (Either String Unit)
-  , getById :: CommentId -> m (Maybe Comment)
-  , getByArticle :: ArticleId -> m (Maybe Comment)
+  { create :: CommentCreateInput -> m (Either String Comment)
+  , getById :: CommentId -> m (Either String Comment)
+  , getByArticleId :: ArticleId -> m (Either String (List Comment))
   , list :: m (List Comment)
-  , update :: CommentId -> (Comment -> Comment) -> m Unit
-  , delete :: CommentId -> m Unit
+  , update :: CommentId -> (Comment -> Comment) -> m (Either String Comment)
+  , delete :: CommentId -> m (Either String Unit)
   }

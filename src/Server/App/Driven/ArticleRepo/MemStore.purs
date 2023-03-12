@@ -4,9 +4,10 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
+import Conduit.Control.Monad.Except (maybeThrow)
 import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (except, runExceptT)
-import Data.Either (Either, note)
+import Control.Monad.Except (runExceptT)
+import Data.Either (Either)
 import Data.Foldable (foldl)
 import Data.List (List(..))
 import Data.List as List
@@ -15,7 +16,6 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.UUID (genUUID)
 import Effect.AVar (AVar)
 import Effect.Aff (Aff)
-import Effect.Aff.AVar as AVar
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
@@ -72,13 +72,13 @@ createArticle storeRef { title, description, body, tagList, authorId } = runExce
 getArticleById :: AVar MemStore -> ArticleId -> Aff (Either String Article)
 getArticleById storeRef articleId = runExceptT do
   { byId } <- liftAff $ Avar.take storeRef
-  except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
 
 getArticleBySlug :: AVar MemStore -> Slug -> Aff (Either String Article)
 getArticleBySlug storeRef slug = runExceptT do
   { slugToId, byId } <- liftAff $ Avar.take storeRef
-  articleId <- except $ note ("Could not find article with slug " <> show slug) $ Map.lookup slug slugToId
-  except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  articleId <- maybeThrow ("Could not find article with slug " <> show slug) $ Map.lookup slug slugToId
+  maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
 
 listArticles :: AVar MemStore -> Aff (List Article)
 listArticles storeRef = do
@@ -88,7 +88,7 @@ listArticles storeRef = do
 updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Aff (Either String Article)
 updateArticle storeRef articleId updateFn = runExceptT do
   { byId, slugToId } <- liftAff $ Avar.take storeRef
-  article <- except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  article <- maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
 
   let
     updatedArticle = updateFn article
@@ -100,13 +100,13 @@ updateArticle storeRef articleId updateFn = runExceptT do
 deleteArticle :: AVar MemStore -> ArticleId -> Aff (Either String Unit)
 deleteArticle storeRef articleId = runExceptT do
   { byId, slugToId } <- liftAff $ Avar.take storeRef
-  (Article { slug }) <- except $ note ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  (Article { slug }) <- maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
   liftAff $ Avar.put { byId: Map.delete articleId byId, slugToId: Map.delete slug slugToId } storeRef
 
 mkMemoryArticleStore :: ArticleMap -> Aff (ArticleRepo Aff)
 mkMemoryArticleStore initialState = do
-  let (slugToId :: SlugToArticle) = foldl (\acc (Article { articleId, slug }) -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
-  storeRef <- AVar.new { byId: initialState, slugToId }
+  let slugToId = foldl (\acc (Article { articleId, slug }) -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
+  storeRef <- Avar.new { byId: initialState, slugToId }
   pure $
     ArticleRepo
       { create: createArticle storeRef
