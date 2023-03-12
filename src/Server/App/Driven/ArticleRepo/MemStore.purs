@@ -5,21 +5,23 @@ import Prelude
 import Control.Monad.Cont (lift)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), runExceptT)
-import Control.Monad.List.Trans (foldl)
+import Control.Monad.List.Trans (ListT, foldl)
 import Data.Array (fromFoldable)
 import Data.Either (Either(..), note)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Tuple (Tuple)
 import Data.Tuple.Nested ((/\))
 import Data.UUID (genUUID)
 import Effect.AVar (AVar)
 import Effect.Aff (Aff)
 import Effect.Aff.AVar as AVar
 import Effect.Aff.AVar as Avar
+import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
 import Server.Core.Domain.Article (Article(..), ArticleId(..))
-import Server.Core.Ports.Ports (ArticleRepo, ArticleCreateInput)
+import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..))
 import Slug (Slug, generate)
 
 type ArticleMap = Map.Map ArticleId Article
@@ -32,15 +34,19 @@ type MemStore =
 
 createArticle :: AVar MemStore -> ArticleCreateInput -> Aff (Either String Article)
 createArticle storeRef { title, description, body, tagList, authorId } = runExceptT do
-  (slug :: Slug) <- note "Could not generate slug" $ generate title
 
-  (store@{ byId, slugToId } :: MemStore) <- Avar.take storeRef
+  store@{ byId, slugToId } <- liftAff $ Avar.take storeRef
 
-  when (Map.member slug slugToId) do
-    throwError "Slug already exists"
+  (slug :: Slug) <- case generate title of
+    Just slug -> do
+      if Map.member slug slugToId then
+        throwError $ "Expected unique slug but found a duplicate for " <> (show slug)
+      else
+        pure slug
+    Nothing -> throwError $ "Expected a slug-able title but could not generate from " <> title
 
   articleId <- liftEffect $ ArticleId <$> genUUID
-  now <- liftEffect nowDate
+  now <- liftEffect $ nowDate
 
   let
     article = Article
@@ -57,14 +63,19 @@ createArticle storeRef { title, description, body, tagList, authorId } = runExce
       }
     newStore = { byId: Map.insert articleId article byId, slugToId: Map.insert slug articleId slugToId }
 
-  Avar.put newStore storeRef
-
-  (pure $ Right article :: Aff (Either String Article))
+  liftAff $ Avar.put newStore storeRef
+  pure article
 
 mkMemoryArticleStore :: ArticleMap -> Aff (ArticleRepo Aff)
 mkMemoryArticleStore initialState = do
-  (slugToId :: SlugToArticle) <- foldl (\acc (articleId /\ { slug }) -> Map.insert slug articleId acc) Map.empty $ Map.toUnfoldable initialState
-  (storeRef :: MemStore) <- AVar.new { byId: initialState, slugToId }
-  pure
-    { create: createArticle storeRef
-    }
+  slugToId <- foldl (\acc (articleId /\ (Article { slug })) -> Map.insert slug articleId acc) Map.empty $ Map.toUnfoldable initialState
+  storeRef <- AVar.new { byId: initialState, slugToId }
+  pure $
+    ArticleRepo
+      { create: createArticle storeRef
+      , getById: ?_
+      , getBySlug: ?_
+      , list: ?_
+      , update: ?_
+      , delete: ?_
+      }

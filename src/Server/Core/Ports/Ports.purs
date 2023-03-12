@@ -32,7 +32,7 @@ type ArticleCreateInput =
   }
 
 newtype ArticleRepo m = ArticleRepo
-  { create :: ArticleCreateInput -> m (Either String Unit)
+  { create :: ArticleCreateInput -> m (Either String Article)
   , getById :: ArticleId -> m (Maybe Article)
   , getBySlug :: Slug -> m (Maybe Article)
   , list :: m (List Article)

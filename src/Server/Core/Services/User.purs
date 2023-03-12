@@ -5,11 +5,11 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
-import Server.Core.Domain.User (User, UserId, UserRegistration)
-import Server.Core.Ports.Ports (UserRepo(..))
+import Server.Core.Domain.User (User, UserId)
+import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 
 newtype UserService m = UserService
-  { createUser :: UserRegistration -> m (Either String User)
+  { createUser :: UserCreateInput -> m (Either String User)
   , findUser :: UserId -> m (Either String User)
   }
 
@@ -20,7 +20,7 @@ findUser (UserRepo { getById }) userId = do
     Just user -> Right user
     Nothing -> Left "User not found"
 
-createUser :: UserRepo Aff -> UserRegistration -> Aff (Either String User)
+createUser :: UserRepo Aff -> UserCreateInput -> Aff (Either String User)
 createUser (UserRepo { create }) userReg = create userReg
 
 mkUserService :: UserRepo Aff -> UserService Aff

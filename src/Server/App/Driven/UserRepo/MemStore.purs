@@ -16,8 +16,8 @@ import Effect.Aff (Aff)
 import Effect.Aff.AVar as Ref
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
-import Server.Core.Domain.User (User, UserId(..), UserRegistration, Username)
-import Server.Core.Ports.Ports (UserRepo(..))
+import Server.Core.Domain.User (User, UserId(..), Username)
+import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 
 type UserMap = Map UserId User
 type UsernameToIdMap = Map Username UserId
@@ -27,7 +27,7 @@ type MemStore =
   , usernameToId :: UsernameToIdMap
   }
 
-createUser :: AVar MemStore -> UserRegistration -> Aff (Either String User)
+createUser :: AVar MemStore -> UserCreateInput -> Aff (Either String User)
 createUser storeRef { username, email, password } = do
   store@{ byId } <- Ref.read storeRef
   userId <- liftEffect UUID.genUUID <#> (\uuid -> UserId uuid)
@@ -35,7 +35,7 @@ createUser storeRef { username, email, password } = do
 
   let
     user =
-      { id: userId
+      { userId
       , username
       , email
       , password
