@@ -8,6 +8,7 @@ import Conduit.Control.Monad.Except (maybeThrow)
 import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
+import Data.List (List(..), nub)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -18,7 +19,7 @@ import Effect.Aff.AVar as Ref
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
-import Server.Core.Domain.User (User, UserId(..), Username, Email)
+import Server.Core.Domain.User (Email, User, UserId(..), Username, AuthorId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 
 type UserMap = Map UserId User
@@ -43,6 +44,7 @@ createUser storeRef { username, email, password } = do
       , username
       , email
       , password
+      , following: Nil
       , createdAt: createdNow
       , updatedAt: Nothing
       , bio: Nothing
@@ -81,6 +83,12 @@ updateUserById storeRef userId updateFn = runExceptT do
 
   pure updatedUser
 
+followUser :: AVar MemStore -> UserId -> AuthorId -> Aff (Either String User)
+followUser storeRef userId authorId =
+  updateUserById storeRef userId updateFn
+  where
+  updateFn = \user@{ following } -> user { following = nub $ Cons authorId following }
+
 mkMemoryUserRepo :: UserMap -> Aff (UserRepo Aff)
 mkMemoryUserRepo initialState = do
   let
@@ -102,4 +110,5 @@ mkMemoryUserRepo initialState = do
     , getByUsername: getUserByUsername storeRef
     , getByEmail: getUserByEmail storeRef
     , update: updateUserById storeRef
+    , follow: followUser storeRef
     }

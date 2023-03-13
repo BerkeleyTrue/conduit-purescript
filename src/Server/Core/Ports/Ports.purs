@@ -7,7 +7,7 @@ import Data.List (List)
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId)
 import Server.Core.Domain.Comment (CommentId, Comment)
-import Server.Core.Domain.User (User, UserId, Username, Email)
+import Server.Core.Domain.User (Email, User, UserId, Username, AuthorId)
 import Slug (Slug)
 
 type UserCreateInput =
@@ -22,6 +22,7 @@ newtype UserRepo m = UserRepo
   , getByUsername :: Username -> m (Either String User)
   , getByEmail :: Email -> m (Either String User)
   , update :: UserId -> (User -> User) -> m (Either String User)
+  , follow :: UserId -> AuthorId -> m (Either String User)
   }
 
 type ArticleCreateInput =

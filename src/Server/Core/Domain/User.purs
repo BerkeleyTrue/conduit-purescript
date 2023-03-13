@@ -3,7 +3,6 @@ module Server.Core.Domain.User
   , UserId(..)
   , AuthorId
   , Email
-  , PublicProfile(..)
   , Username
   , UsernameValidationErrors(..)
   , makeUsername
@@ -13,6 +12,7 @@ import Prelude
 
 import Data.Date (Date)
 import Data.Either (Either(..))
+import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.String as String
 import Data.UUID (UUID)
@@ -38,18 +38,12 @@ derive instance ordUserId :: Ord UserId
 
 type Email = String
 
-type PublicProfile =
-  { username :: Username
-  , bio :: Maybe String
-  , image :: Maybe String
-  , following :: Boolean
-  }
-
 type User =
   { userId :: UserId
   , username :: Username
   , email :: Email
   , password :: String
+  , following :: List AuthorId
   , bio :: Maybe String
   , image :: Maybe String
   , createdAt :: Date
