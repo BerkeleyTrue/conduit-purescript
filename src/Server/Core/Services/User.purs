@@ -4,8 +4,9 @@ import Prelude
 
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), runExceptT)
-import Data.Either (Either)
-import Data.Maybe (Maybe)
+import Data.Bifunctor (rmap)
+import Data.Either (Either, either)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff (Aff)
 import Server.Core.Domain.User (AuthorId, Email, PublicProfile, User, UserId, Username)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
@@ -34,8 +35,11 @@ newtype UserService m = UserService
   , login :: UserLoginInput -> m (Either String UserOutput)
   , getUser :: UserId -> m (Either String UserOutput)
   , getProfile :: AuthorId -> UserId -> m (Either String PublicProfile)
-  -- , update :: UserId -> UpdateUserInput -> m (Either String UserOutput)
+  , update :: UserId -> UpdateUserInput -> m (Either String UserOutput)
   }
+
+formatUserOutput :: User -> UserOutput
+formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
 
 registerUser :: forall m. Monad m => UserRepo m -> UserCreateInput -> m (Either String User)
 registerUser (UserRepo { create }) userReg = create userReg
@@ -59,8 +63,18 @@ getUserProfile (UserRepo { getById }) _ userId = runExceptT do
   { username, bio, image } <- ExceptT $ getById userId
   pure $ { username, bio, image, following: false }
 
--- updateUser :: forall m. Monad m => UserRepo m -> UserId -> UpdateUserInput -> m (Either String UserOutput)
--- updateUser (UserRepo { update }) userId input = runExceptT do
+-- TODO: add validation for password/email
+updateUser :: forall m. Monad m => UserRepo m -> UserId -> UpdateUserInput -> m (Either String UserOutput)
+updateUser (UserRepo { update }) userId input =
+  update userId
+    ( \user -> user
+        { email = fromMaybe user.email input.email
+        , username = fromMaybe user.username input.username
+        , password = fromMaybe user.password input.password
+        , image = input.image >>= \image -> if image == "" then user.image else Just image
+        , bio = input.bio >>= \bio -> if bio == "" then user.bio else Just bio
+        }
+    ) >>= pure <<< rmap formatUserOutput
 
 mkUserService :: UserRepo Aff -> UserService Aff
 mkUserService repo = UserService
@@ -68,4 +82,5 @@ mkUserService repo = UserService
   , login: loginUser repo
   , getUser: getUser repo
   , getProfile: getUserProfile repo
+  , update: updateUser repo
   }
