@@ -23,6 +23,7 @@ newtype UserRepo m = UserRepo
   , getByEmail :: Email -> m (Either String User)
   , update :: UserId -> (User -> User) -> m (Either String User)
   , follow :: UserId -> AuthorId -> m (Either String User)
+  , unfollow :: UserId -> AuthorId -> m (Either String User)
   }
 
 type ArticleCreateInput =

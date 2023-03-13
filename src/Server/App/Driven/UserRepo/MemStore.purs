@@ -8,7 +8,7 @@ import Conduit.Control.Monad.Except (maybeThrow)
 import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
-import Data.List (List(..), nub)
+import Data.List (List(..), nub, filter)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -89,6 +89,12 @@ followUser storeRef userId authorId =
   where
   updateFn = \user@{ following } -> user { following = nub $ Cons authorId following }
 
+unfollowUser :: AVar MemStore -> UserId -> AuthorId -> Aff (Either String User)
+unfollowUser storeRef userId authorId =
+  updateUserById storeRef userId updateFn
+  where
+  updateFn = \user@{ following } -> user { following = filter (_ /= authorId) following }
+
 mkMemoryUserRepo :: UserMap -> Aff (UserRepo Aff)
 mkMemoryUserRepo initialState = do
   let
@@ -111,4 +117,5 @@ mkMemoryUserRepo initialState = do
     , getByEmail: getUserByEmail storeRef
     , update: updateUserById storeRef
     , follow: followUser storeRef
+    , unfollow: unfollowUser storeRef
     }

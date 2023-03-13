@@ -49,6 +49,7 @@ newtype UserService m = UserService
   , getProfile :: AuthorId -> UserId -> m (Either String PublicProfile)
   , update :: UserId -> UpdateUserInput -> m (Either String UserOutput)
   , follow :: UserId -> AuthorId -> m (Either String PublicProfile)
+  , unfollow :: UserId -> AuthorId -> m (Either String PublicProfile)
   }
 
 formatUserOutput :: User -> UserOutput
@@ -102,7 +103,15 @@ updateUser (UserRepo { update }) userId input = do
 
 followUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (Either String PublicProfile)
 followUser (UserRepo { follow }) userId authorId =
-  follow userId authorId >>= pure <<< rmap (formatUserToPublicProfile (Just authorId))
+  follow userId authorId >>= pure <<< rmap toProfile
+  where
+    toProfile = formatUserToPublicProfile (Just authorId)
+
+unfollowUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (Either String PublicProfile)
+unfollowUser (UserRepo { unfollow }) userId authorId =
+  unfollow userId authorId >>= pure <<< rmap toProfile
+  where
+    toProfile = formatUserToPublicProfile (Just authorId)
 
 mkUserService :: UserRepo Aff -> UserService Aff
 mkUserService repo = UserService
@@ -112,4 +121,5 @@ mkUserService repo = UserService
   , getProfile: getUserProfile repo
   , update: updateUser repo
   , follow: followUser repo
+  , unfollow: unfollowUser repo
   }
