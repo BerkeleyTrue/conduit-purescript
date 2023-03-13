@@ -3,10 +3,7 @@ module Server.Core.Domain.User
   , UserId(..)
   , AuthorId
   , Email
-  , UserInfo(..)
   , PublicProfile(..)
-  , Authentication(..)
-  , MetaInfo(..)
   , Username
   , UsernameValidationErrors(..)
   , makeUsername
@@ -40,22 +37,6 @@ derive instance eqUserId :: Eq UserId
 derive instance ordUserId :: Ord UserId
 
 type Email = String
-
-type UserInfo =
-  { username :: Username
-  , email :: Email
-  , bio :: Maybe String
-  , image :: Maybe String
-  }
-
-type Authentication =
-  { token :: String
-  }
-
-type MetaInfo =
-  { createdAt :: Date
-  , updatedAt :: Maybe Date
-  }
 
 type PublicProfile =
   { username :: Username
