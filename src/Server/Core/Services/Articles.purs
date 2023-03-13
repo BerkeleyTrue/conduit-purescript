@@ -1,11 +1,11 @@
 module Server.Core.Services.Articles where
 
-import Data.Maybe (Maybe)
+import Data.Either (Either)
 import Server.Core.Domain.Article (Article, ArticleId)
 import Server.Core.Ports.Ports (ArticleRepo(..))
 
 newtype ArticleService m = ArticleService
-  { getArticle :: ArticleId -> m (Maybe Article)
+  { getArticle :: ArticleId -> m (Either String Article)
   }
 
 mkArticleService :: forall m. ArticleRepo m -> ArticleService m

@@ -1,6 +1,8 @@
 module Server.Core.Domain.User
   ( User(..)
   , UserId(..)
+  , AuthorId
+  , Email
   , UserInfo(..)
   , PublicProfile(..)
   , Authentication(..)
@@ -29,15 +31,19 @@ instance showUsername :: Show Username where
 
 newtype UserId = UserId UUID
 
+type AuthorId = UserId
+
 instance showUserId :: Show UserId where
   show (UserId userId) = "userId: " <> show userId
 
 derive instance eqUserId :: Eq UserId
 derive instance ordUserId :: Ord UserId
 
+type Email = String
+
 type UserInfo =
   { username :: Username
-  , email :: String
+  , email :: Email
   , bio :: Maybe String
   , image :: Maybe String
   }
@@ -61,7 +67,7 @@ type PublicProfile =
 type User =
   { userId :: UserId
   , username :: Username
-  , email :: String
+  , email :: Email
   , password :: String
   , bio :: Maybe String
   , image :: Maybe String

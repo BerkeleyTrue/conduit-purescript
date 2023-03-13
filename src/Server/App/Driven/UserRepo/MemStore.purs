@@ -11,7 +11,6 @@ import Data.Foldable (foldl)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.Tuple.Nested ((/\))
 import Data.UUID as UUID
 import Effect.AVar (AVar)
 import Effect.Aff (Aff)
@@ -19,15 +18,17 @@ import Effect.Aff.AVar as Ref
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
-import Server.Core.Domain.User (User, UserId(..), Username)
+import Server.Core.Domain.User (User, UserId(..), Username, Email)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 
 type UserMap = Map UserId User
 type UsernameToIdMap = Map Username UserId
+type EmailToIdMap = Map String UserId
 
 type MemStore =
   { byId :: UserMap
   , usernameToId :: UsernameToIdMap
+  , emailToId :: EmailToIdMap
   }
 
 createUser :: AVar MemStore -> UserCreateInput -> Aff (Either String User)
@@ -62,6 +63,11 @@ getUserByUsername storeRef username = runExceptT do
   { byId, usernameToId } <- liftAff $ Ref.read storeRef
   maybeThrow ("No user found for " <> show username) $ Map.lookup username usernameToId >>= flip Map.lookup byId
 
+getUserByEmail :: AVar MemStore -> Email -> Aff (Either String User)
+getUserByEmail storeRef email = runExceptT do
+  { byId, emailToId } <- liftAff $ Ref.read storeRef
+  maybeThrow ("No user found for " <> show email) $ Map.lookup email emailToId >>= flip Map.lookup byId
+
 updateUserById :: AVar MemStore -> UserId -> (User -> User) -> Aff (Either String User)
 updateUserById storeRef userId updateFn = runExceptT do
   store@{ byId } <- liftAff $ Ref.read storeRef
@@ -77,11 +83,23 @@ updateUserById storeRef userId updateFn = runExceptT do
 
 mkMemoryUserRepo :: UserMap -> Aff (UserRepo Aff)
 mkMemoryUserRepo initialState = do
-  let usernameToId = foldl (\acc { userId, username } -> Map.insert username userId acc) Map.empty $ Map.values initialState
-  storeRef <- Ref.new { byId: initialState, usernameToId }
+  let
+    { usernameToId, emailToId } =
+      foldl
+        ( \{ usernameToId, emailToId } { userId, username, email } ->
+            { usernameToId: Map.insert username userId usernameToId
+            , emailToId: Map.insert email userId emailToId
+            }
+        )
+        { usernameToId: Map.empty
+        , emailToId: Map.empty
+        } $ Map.values initialState
+
+  storeRef <- Ref.new { byId: initialState, usernameToId, emailToId }
   pure $ UserRepo
     { create: createUser storeRef
     , getById: getUserById storeRef
     , getByUsername: getUserByUsername storeRef
+    , getByEmail: getUserByEmail storeRef
     , update: updateUserById storeRef
     }

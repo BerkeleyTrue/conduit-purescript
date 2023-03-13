@@ -45,6 +45,7 @@
               ansi
               formatters
               stringutils
+              crypto
             ];
 
             dir = ./.;
