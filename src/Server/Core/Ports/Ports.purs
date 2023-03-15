@@ -5,9 +5,10 @@ import Prelude
 import Data.Either (Either)
 import Data.List (List)
 import Data.Maybe (Maybe)
-import Server.Core.Domain.Article (Article, ArticleId)
+import Server.Core.Domain.Article (Article, ArticleId, Tag)
 import Server.Core.Domain.Comment (CommentId, Comment)
 import Server.Core.Domain.User (Email, User, UserId, Username, AuthorId)
+import Server.Infra.Data.Route (Limit)
 import Slug (Slug)
 
 type UserCreateInput =
@@ -34,11 +35,19 @@ type ArticleCreateInput =
   , authorId :: UserId
   }
 
+type ArticleListInput =
+  { tag :: Maybe Tag
+  , author :: Maybe AuthorId
+  , favorited :: Maybe AuthorId
+  , limit :: Maybe Limit
+  , offset :: Maybe Int
+  }
+
 newtype ArticleRepo m = ArticleRepo
   { create :: ArticleCreateInput -> m (Either String Article)
   , getById :: ArticleId -> m (Either String Article)
   , getBySlug :: Slug -> m (Either String Article)
-  , list :: m (List Article)
+  , list :: ArticleListInput -> m (List Article)
   , update :: ArticleId -> (Article -> Article) -> m (Either String Article)
   , delete :: ArticleId -> m (Either String Unit)
   }

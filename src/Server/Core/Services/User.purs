@@ -1,4 +1,11 @@
-module Server.Core.Services.User where
+module Server.Core.Services.User
+  ( UserService(..)
+  , UserLoginInput
+  , UpdateUserInput
+  , UserOutput
+  , PublicProfile
+  , mkUserService
+  ) where
 
 import Prelude
 
@@ -8,6 +15,7 @@ import Data.Bifunctor (rmap)
 import Data.Either (Either)
 import Data.Foldable (any)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Newtype (class Newtype)
 import Effect.Aff (Aff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
@@ -51,6 +59,8 @@ newtype UserService m = UserService
   , follow :: UserId -> AuthorId -> m (Either String PublicProfile)
   , unfollow :: UserId -> AuthorId -> m (Either String PublicProfile)
   }
+
+derive instance newtypeUserService :: Newtype (UserService m) _
 
 formatUserOutput :: User -> UserOutput
 formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
@@ -105,13 +115,13 @@ followUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (
 followUser (UserRepo { follow }) userId authorId =
   follow userId authorId >>= pure <<< rmap toProfile
   where
-    toProfile = formatUserToPublicProfile (Just authorId)
+  toProfile = formatUserToPublicProfile (Just authorId)
 
 unfollowUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (Either String PublicProfile)
 unfollowUser (UserRepo { unfollow }) userId authorId =
   unfollow userId authorId >>= pure <<< rmap toProfile
   where
-    toProfile = formatUserToPublicProfile (Just authorId)
+  toProfile = formatUserToPublicProfile (Just authorId)
 
 mkUserService :: UserRepo Aff -> UserService Aff
 mkUserService repo = UserService

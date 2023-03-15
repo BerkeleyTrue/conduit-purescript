@@ -18,7 +18,9 @@ instance showArticleId :: Show ArticleId where
 derive instance eqArticleId :: Eq ArticleId
 derive instance ordArticleId :: Ord ArticleId
 
-data Article = Article
+type Tag = String
+
+type Article =
   { articleId :: ArticleId
   , slug :: Slug
   , title :: String
