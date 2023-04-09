@@ -60,7 +60,7 @@
 
           watch-compile = pkgs.writeShellScriptBin "watch-compile" ''
             set -x
-            find src | entr -s 'echo "compiling..."; purs-nix compile' &
+            find src | entr -s 'echo "compiling..."; purs-nix compile'
           '';
         in
         {
