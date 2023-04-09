@@ -9,6 +9,7 @@ module Server.Core.Services.User
 
 import Prelude
 
+import Conduit.Data.Password (comparePasswords)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (ExceptT(..), runExceptT)
 import Data.Bifunctor (rmap)
@@ -21,7 +22,6 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
 import Server.Core.Domain.User (AuthorId, Email, User, UserId, Username)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
-import Server.Infra.Data.Password (comparePasswords)
 
 type UserLoginInput = { username :: Username, email :: String, password :: String }
 

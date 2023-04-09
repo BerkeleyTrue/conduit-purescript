@@ -10,13 +10,13 @@ module Server.Core.Domain.User
 
 import Prelude
 
+import Conduit.Data.String (isWordAlphaNum, startsWithLetter)
 import Data.Date (Date)
 import Data.Either (Either(..))
 import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.String as String
 import Data.UUID (UUID)
-import Server.Infra.Data.String (isWordAlphaNum, startsWithLetter)
 
 newtype Username = Username String
 
