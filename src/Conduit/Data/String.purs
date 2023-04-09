@@ -1,4 +1,4 @@
-module Server.Infra.Data.String where
+module Conduit.Data.String where
 
 import Prelude
 

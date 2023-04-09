@@ -1,4 +1,4 @@
-module Server.Infra.Data.Password where
+module Conduit.Data.Password where
 
 import Prelude
 
