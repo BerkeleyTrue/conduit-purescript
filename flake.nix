@@ -12,7 +12,7 @@
     ps-tools.follows = "purs-nix/ps-tools";
   };
 
-  outputs = inputs@{ self, flake-parts, nixpkgs, ... }:
+  outputs = inputs@{ self, flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit self inputs; } {
       systems = [ "x86_64-linux" "x86_64-darwin" ];
       imports = [
@@ -42,6 +42,8 @@
 
               # server
               httpurple
+              httpurple-yoga-json
+              yoga-json
               ansi
               formatters
               stringutils
