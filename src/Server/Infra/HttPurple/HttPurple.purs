@@ -12,7 +12,7 @@ import Server.Infra.Node.GracefullShutdown (gracefullShutdown)
 import Server.Infra.HttPurple.Types (Router)
 
 notFoundHandler :: Router Unit
-notFoundHandler = const $ response Status.notFound "Oops, something went wrong"
+notFoundHandler = const $ response Status.notFound "Could not find the requested resource."
 
 createServer
   :: forall route
