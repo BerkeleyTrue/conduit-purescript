@@ -2,7 +2,8 @@ module Server.Main (main) where
 
 import Prelude
 
-import Effect.Aff (Aff)
+import Effect (Effect)
+import Effect.Aff (launchAff_)
 import Server.Infra (createApp)
 
 -- TODO: move port into env config
@@ -10,5 +11,5 @@ import Server.Infra (createApp)
 port :: Int
 port = 3000
 
-main :: Aff Unit
-main = createApp port
+main :: Effect Unit
+main = launchAff_ $ createApp port
