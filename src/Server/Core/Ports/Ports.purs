@@ -2,12 +2,13 @@ module Server.Core.Ports.Ports where
 
 import Prelude
 
+import Conduit.Data.Username (Username)
 import Data.Either (Either)
 import Data.List (List)
 import Data.Maybe (Maybe)
 import Server.Core.Domain.Article (Article, ArticleId, Tag)
 import Server.Core.Domain.Comment (CommentId, Comment)
-import Server.Core.Domain.User (Email, User, UserId, Username, AuthorId)
+import Server.Core.Domain.User (Email, User, UserId, AuthorId)
 import Server.Infra.Data.Route (Limit)
 import Slug (Slug)
 

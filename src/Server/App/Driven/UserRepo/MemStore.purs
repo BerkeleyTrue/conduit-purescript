@@ -5,6 +5,7 @@ module Server.App.Driven.UserRepo.MemStore
 import Prelude
 
 import Conduit.Control.Monad.Except (maybeThrow)
+import Conduit.Data.Username (Username)
 import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
@@ -19,7 +20,7 @@ import Effect.Aff.AVar as Ref
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
-import Server.Core.Domain.User (Email, User, UserId(..), Username, AuthorId)
+import Server.Core.Domain.User (Email, User, UserId(..), AuthorId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 
 type UserMap = Map UserId User
