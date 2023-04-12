@@ -57,7 +57,8 @@
             set -x
             find src/Server | entr -s 'echo "compiling..."; purs-nix compile' &
             sleep 1s
-            ${lib.getExe pkgs.nodePackages.nodemon} --watch output --delay 500ms src/Server/main.js
+            # now start nodemon and send stdin to it
+            ${lib.getExe pkgs.nodePackages.nodemon} --watch output --delay 500ms src/Server/main.js <&0
           '';
 
           watch-compile = pkgs.writeShellScriptBin "watch-compile" ''
