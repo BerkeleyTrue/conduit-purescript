@@ -11,12 +11,13 @@ import Data.Int as Data.Int
 import Data.String as Data.String
 import Data.String.Utils (padEnd)
 import Data.Time.Duration as Data.Time.Duration
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, throwError)
 import Effect.Aff as Effect.Aff
+import Effect.Class (liftEffect)
 import Effect.Class as Effect.Class
-import Effect.Class.Console as Effect.Class.Console
+import Effect.Class.Console as Console
 import Effect.Now as Effect.Now
-import HTTPurple (Request, Response)
+import HTTPurple (Request, Response(..))
 import HTTPurple as HTTP
 import Server.Infra.HttPurple.Types (Middleware')
 
@@ -24,8 +25,8 @@ import Server.Infra.HttPurple.Types (Middleware')
 -- |
 -- | Used to prepare metadata for the logs.
 type LogLifecycle route a =
-  { after :: Request route -> Response -> a -> Effect.Aff.Aff String
-  , before :: HTTP.Request route -> Effect.Aff.Aff a
+  { after :: Request route -> Response -> a -> Aff String
+  , before :: HTTP.Request route -> Aff a
   }
 
 -- | A helper that encapsulates the different information around request time.
@@ -66,9 +67,13 @@ log config router request =
     (config.before request)
     { completed: \response before -> do
         str <- config.after request response before
-        Effect.Class.Console.log str
-    , failed: \error _ -> Effect.Aff.throwError error
-    , killed: \error _ -> Effect.Aff.throwError error
+        Console.log str
+    , failed: \error _ -> do
+        Console.error $ "Error: " <> show error
+        throwError error
+    , killed: \error _ -> do
+        Console.error $ "Error: " <> show error
+        throwError error
     }
     \_ -> router request
 
@@ -82,7 +87,7 @@ logWithTime format = log { after, before }
     -> Data.DateTime.DateTime
     -> Aff String
   after request response start = do
-    stop <- Effect.Class.liftEffect Effect.Now.nowDateTime
+    stop <- liftEffect Effect.Now.nowDateTime
     let duration = Data.DateTime.diff stop start
     format { duration, start, stop } request response
 
@@ -135,7 +140,7 @@ developmentLogFormat'
    . LogTime
   -> Request route
   -> Response
-  -> Effect.Aff.Aff String
+  -> Aff String
 developmentLogFormat' logTime request response =
   pure
     $ Data.String.joinWith
