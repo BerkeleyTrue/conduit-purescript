@@ -6,7 +6,7 @@ import Prelude
 
 import Conduit.Control.Monad.Except (maybeThrow)
 import Conduit.Data.Username (Username)
-import Control.Monad.Except (runExceptT)
+import Control.Monad.Except (catchError, runExceptT, throwError)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.List (List(..), nub, filter)
@@ -19,6 +19,7 @@ import Effect.Aff (Aff)
 import Effect.Aff.AVar as Ref
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
+import Effect.Class.Console (log)
 import Effect.Now (nowDate)
 import Server.Core.Domain.User (Email, User, UserId(..), AuthorId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
@@ -74,7 +75,7 @@ getUserByEmail storeRef email = runExceptT do
 
 updateUserById :: AVar MemStore -> UserId -> (User -> User) -> Aff (Either String User)
 updateUserById storeRef userId updateFn = runExceptT do
-  store@{ byId } <- liftAff $ Ref.read storeRef
+  store@{ byId } <- liftAff $ Ref.take storeRef
   user <- maybeThrow ("No user found with id " <> show userId) $ Map.lookup userId byId
 
   let
@@ -83,7 +84,12 @@ updateUserById storeRef userId updateFn = runExceptT do
 
   liftAff $ Ref.put newStore storeRef
 
-  pure updatedUser
+  -- catch error and put back old store
+  catchError (pure updatedUser) \err -> do
+    liftAff $ Ref.put store storeRef
+    log $ "Error updating user: " <> show err
+    throwError err
+
 
 followUser :: AVar MemStore -> UserId -> AuthorId -> Aff (Either String User)
 followUser storeRef userId authorId =
