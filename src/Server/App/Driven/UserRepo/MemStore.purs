@@ -35,7 +35,7 @@ type MemStore =
 
 createUser :: AVar MemStore -> UserCreateInput -> Aff (Either String User)
 createUser storeRef { username, email, password } = do
-  store@{ byId } <- Ref.read storeRef
+  store@{ byId } <- Ref.take storeRef
   userId <- liftEffect UUID.genUUID <#> (\uuid -> UserId uuid)
   createdNow <- liftEffect nowDate
 
@@ -51,6 +51,7 @@ createUser storeRef { username, email, password } = do
       , bio: Nothing
       , image: Nothing
       }
+    -- TODO: add usernameToId and emailToId
     newStore = store { byId = Map.insert userId user $ byId }
 
   Ref.put newStore storeRef
