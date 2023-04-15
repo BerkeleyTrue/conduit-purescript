@@ -42,9 +42,9 @@ makeUsername :: String -> Either UsernameValidationErrors Username
 makeUsername username =
   if String.length username < 3 then
     Left TooShort
-  else if isWordAlphaNum username then
+  else if not (isWordAlphaNum username) then
     Left InvalidCharacters
-  else if startsWithLetter username then
+  else if not (startsWithLetter username) then
     Left MustStartWithLetter
   else
     Right (Username username)
