@@ -34,6 +34,7 @@
               slug
               unicode
               uuid
+              dotenv
 
               # client
               halogen

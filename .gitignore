@@ -9,3 +9,4 @@
 /.psa*
 /.spago
 public/bundle.js
+.env
