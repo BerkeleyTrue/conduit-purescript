@@ -34,7 +34,6 @@
               slug
               unicode
               uuid
-              checked-exceptions
 
               # client
               halogen
