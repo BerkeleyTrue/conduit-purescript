@@ -1,13 +1,14 @@
-module Server.Infra (createApp) where
+module Server.Infra (omApp) where
 
 import Prelude hiding ((/))
 
-import Effect.Aff (Aff)
-import Effect.Class (liftEffect)
 import Server.App (route, router)
-import Server.Infra.HttPurple (createServer)
+import Server.Infra.HttPurple (omServer)
+import Yoga.Om (Om, expandCtx, widenCtx)
 
-createApp :: Int -> Aff Unit
-createApp port = do
-  router' <- router
-  liftEffect $ createServer route router' port
+type AppCtx = { port :: Int }
+
+omApp :: Om AppCtx () Unit
+omApp = do
+  router' <- expandCtx router
+  widenCtx { router: router', route } omServer

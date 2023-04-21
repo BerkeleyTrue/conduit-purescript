@@ -10,13 +10,17 @@ import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Class (liftEffect)
 import Effect.Exception (throw)
-import Server.Infra (createApp)
+import Server.Infra (omApp)
 import Server.Infra.Node.Process (lookupEnv_)
+import Yoga.Om (runOm)
 
 main :: Effect Unit
 main = launchAff_ do
   loadFile
   maybePort <- liftEffect $ runExceptT $ lookupEnv_ "PORT" >>= fromString_
   case maybePort of
-    Right port -> createApp port
+    Right port -> runOm
+      { port }
+      { exception: \err -> liftEffect $ throw $ show err }
+      omApp
     Left err -> liftEffect $ throw err

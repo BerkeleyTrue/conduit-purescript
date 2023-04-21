@@ -35,6 +35,7 @@
               unicode
               uuid
               dotenv
+              yoga-om
 
               # client
               halogen
