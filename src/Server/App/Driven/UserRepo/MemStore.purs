@@ -23,6 +23,7 @@ import Effect.Class.Console (log)
 import Effect.Now (nowDate)
 import Server.Core.Domain.User (Email, User, UserId(..), AuthorId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
+import Yoga.Om (Om, fromAff)
 
 type UserMap = Map UserId User
 type UsernameToIdMap = Map Username UserId
@@ -103,7 +104,7 @@ unfollowUser storeRef userId authorId =
   where
   updateFn = \user@{ following } -> user { following = filter (_ /= authorId) following }
 
-mkMemoryUserRepo :: UserMap -> Aff (UserRepo Aff)
+mkMemoryUserRepo :: forall ctx. UserMap -> Om  { | ctx } () (UserRepo Aff)
 mkMemoryUserRepo initialState = do
   let
     { usernameToId, emailToId } =
@@ -117,7 +118,7 @@ mkMemoryUserRepo initialState = do
         , emailToId: Map.empty
         } $ Map.values initialState
 
-  storeRef <- Ref.new { byId: initialState, usernameToId, emailToId }
+  storeRef <- fromAff $ Ref.new { byId: initialState, usernameToId, emailToId }
   pure $ UserRepo
     { create: createUser storeRef
     , getById: getUserById storeRef

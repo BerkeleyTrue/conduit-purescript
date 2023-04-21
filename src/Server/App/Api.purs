@@ -10,7 +10,6 @@ import Prelude hiding ((/))
 import Data.Either (Either)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
-import Effect.Aff (Aff)
 import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, orElse, sum, (/), (<+>))
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, articlesRouter)
@@ -18,6 +17,7 @@ import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, profilesRouter
 import Server.App.Drivers.User (UserRoute, mkUserRouter, userRoute)
 import Server.Core.Services.User (mkUserService)
 import Server.Infra.HttPurple.Types (Router)
+import Yoga.Om (Om)
 
 data ApiRootRoute = Hello
 
@@ -34,7 +34,7 @@ apiRootRouter :: Router ApiRootRoute
 apiRootRouter { route: Hello, method: Get } = ok "Hello Api"
 apiRootRouter { route: Hello } = notFound
 
-apiRouter :: Aff (Router ApiRoute)
+apiRouter :: forall ctx. Om { | ctx } () (Router ApiRoute)
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
   let
