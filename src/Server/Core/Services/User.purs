@@ -11,18 +11,14 @@ import Prelude
 
 import Conduit.Data.Password (comparePasswords)
 import Conduit.Data.Username (Username)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (ExceptT(..), runExceptT)
-import Data.Bifunctor (rmap)
-import Data.Either (Either)
 import Data.Foldable (any)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype)
-import Effect.Aff (Aff)
-import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
 import Server.Core.Domain.User (AuthorId, Email, User, UserId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
+import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
 
 type UserLoginInput = { username :: Username, email :: String, password :: String }
 
@@ -51,14 +47,14 @@ type PublicProfile =
   , following :: Boolean
   }
 
-newtype UserService m = UserService
-  { register :: UserCreateInput -> m (Either String User)
-  , login :: UserLoginInput -> m (Either String UserOutput)
-  , getUser :: UserId -> m (Either String UserOutput)
-  , getProfile :: AuthorId -> UserId -> m (Either String PublicProfile)
-  , update :: UserId -> UpdateUserInput -> m (Either String UserOutput)
-  , follow :: UserId -> AuthorId -> m (Either String PublicProfile)
-  , unfollow :: UserId -> AuthorId -> m (Either String PublicProfile)
+newtype UserService ctx = UserService
+  { register :: UserCreateInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+  , login :: UserLoginInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+  , getUser :: UserId -> Om { | ctx } (userRepoErr :: String) UserOutput
+  , getProfile :: AuthorId -> UserId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+  , update :: UserId -> UpdateUserInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+  , follow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+  , unfollow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
   }
 
 derive instance newtypeUserService :: Newtype (UserService m) _
@@ -75,30 +71,30 @@ formatUserToPublicProfile (Just authorToFollow) { username, bio, image, followin
   }
 formatUserToPublicProfile Nothing { username, bio, image } = { username, bio, image, following: false }
 
-registerUser :: forall m. MonadEffect m => UserRepo m -> UserCreateInput -> m (Either String User)
-registerUser (UserRepo { create }) userReg = create userReg
+registerUser :: forall ctx. UserRepo ctx -> UserCreateInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
 
-loginUser :: UserRepo Aff -> UserLoginInput -> Aff (Either String UserOutput)
-loginUser (UserRepo { getByEmail }) { username, email, password } = runExceptT do
-  { password: storedPassword, bio, image } <- ExceptT $ getByEmail email
-  isPasswordValid <- ExceptT $ comparePasswords password storedPassword
+loginUser :: forall ctx. UserRepo ctx -> UserLoginInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+loginUser (UserRepo { getByEmail }) { username, email, password } = do
+  { password: storedPassword, bio, image } <- getByEmail email
+  (isPasswordValid :: Boolean) <- (fromAff $ comparePasswords password storedPassword) >>= throwLeftAsM (\err -> throw { userRepoErr: "Error while comparing passwords: " <> err })
 
   if isPasswordValid then pure { email, bio, image, username, token: "token" }
-  else throwError "Invalid email or password"
+  else throw { userRepoErr: "Invalid email or password" }
 
-getUser :: forall m. MonadEffect m => UserRepo m -> UserId -> m (Either String UserOutput)
-getUser (UserRepo { getById }) userId = runExceptT do
-  { email, username, bio, image } <- ExceptT $ getById userId
+getUser :: forall ctx. UserRepo ctx -> UserId -> Om { | ctx } (userRepoErr :: String) UserOutput
+getUser (UserRepo { getById }) userId = do
+  { email, username, bio, image } <- getById userId
   pure { email, username, bio, image, token: "token" }
 
 -- TODO: add following field
-getUserProfile :: forall m. MonadEffect m => UserRepo m -> AuthorId -> UserId -> m (Either String PublicProfile)
-getUserProfile (UserRepo { getById }) _ userId = runExceptT do
-  { username, bio, image } <- ExceptT $ getById userId
+getUserProfile :: forall ctx. UserRepo ctx -> AuthorId -> UserId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+getUserProfile (UserRepo { getById }) _ userId = do
+  { username, bio, image } <- getById userId
   pure $ { username, bio, image, following: false }
 
 -- TODO: add validation for password/email
-updateUser :: forall m. MonadEffect m => UserRepo m -> UserId -> UpdateUserInput -> m (Either String UserOutput)
+updateUser :: forall ctx. UserRepo ctx -> UserId -> UpdateUserInput -> Om { | ctx } (userRepoErr :: String) UserOutput
 updateUser (UserRepo { update }) userId input = do
   now <- liftEffect $ nowDate
   update userId
@@ -110,22 +106,22 @@ updateUser (UserRepo { update }) userId input = do
         , bio = input.bio >>= \bio -> if bio == "" then user.bio else Just bio
         , updatedAt = Just now
         }
-    ) >>= pure <<< rmap formatUserOutput
+    ) >>= pure <<< formatUserOutput
 
-followUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (Either String PublicProfile)
+followUser :: forall ctx. UserRepo ctx -> UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
 followUser (UserRepo { follow }) userId authorId =
-  follow userId authorId >>= pure <<< rmap toProfile
+  follow userId authorId <#> toProfile
   where
   toProfile = formatUserToPublicProfile (Just authorId)
 
-unfollowUser :: forall m. MonadEffect m => UserRepo m -> UserId -> AuthorId -> m (Either String PublicProfile)
+unfollowUser :: forall ctx. UserRepo ctx -> UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
 unfollowUser (UserRepo { unfollow }) userId authorId =
-  unfollow userId authorId >>= pure <<< rmap toProfile
+  unfollow userId authorId >>= pure <<< toProfile
   where
   toProfile = formatUserToPublicProfile (Just authorId)
 
-mkUserService :: UserRepo Aff -> UserService Aff
-mkUserService repo = UserService
+mkUserService :: forall ctx. UserRepo ctx -> Om { | ctx } () (UserService ctx)
+mkUserService repo = pure $ UserService
   { register: registerUser repo
   , login: loginUser repo
   , getUser: getUser repo

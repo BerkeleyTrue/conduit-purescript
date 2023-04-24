@@ -34,10 +34,9 @@ apiRootRouter :: Router ApiRootRoute
 apiRootRouter { route: Hello, method: Get } = ok "Hello Api"
 apiRootRouter { route: Hello } = notFound
 
-apiRouter :: forall ctx. Om { | ctx } () (Router ApiRoute)
+apiRouter :: Om {} () (Router ApiRoute)
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
-  let
-    userService = mkUserService userRepo
-    userRouter = mkUserRouter { userService: userService }
+  userService <- mkUserService userRepo
+  let userRouter = mkUserRouter { userService: userService }
   pure (orElse articlesRouter $ orElse profilesRouter $ orElse userRouter apiRootRouter)

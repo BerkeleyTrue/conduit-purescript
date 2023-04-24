@@ -7,17 +7,16 @@ module Server.App.Drivers.User
 
 import Prelude hiding ((/))
 
-import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), RouteDuplex', badRequest, noArgs, notFound, ok, sum, toString, (/))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest, internalServerError, noArgs, notFound, ok, sum, toString, (/))
 import Server.Core.Ports.Ports (UserCreateInput)
-import Server.Core.Services.User (UserService(..))
+import Server.Core.Services.User (UserService(..), UserOutput)
 import Server.Infra.HttPurple.Types (Router)
 import Yoga.JSON (readJSON)
+import Yoga.Om (Om, expandErr, fromAff, runOm, throw, throwLeftAsM)
 
 data UserRoute
   = Register
@@ -33,27 +32,33 @@ userRoute = sum
   , "Authen": "users" / "login" / noArgs
   }
 
-type UserRouterDeps m =
-  { userService :: UserService m
+type UserRouterDeps =
+  { userService :: UserService ()
   }
 
-mkUserRouter :: UserRouterDeps Aff -> Router UserRoute
-mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = do
-  str <- toString body
+mkUserRouter :: UserRouterDeps -> Router UserRoute
+mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = runOm {} errorHandlers do
+  str <- fromAff $ toString body
   liftEffect $ log str
-  let (parsed :: (Either MultipleErrors { user :: UserCreateInput })) = readJSON str
-  case parsed of
-    Left err -> do
-      let parseErr = "Parse error: " <> show err
-      liftEffect $ log parseErr
-      badRequest parseErr
-    Right input -> do
-      res <- register input.user
-      case res of
-        Left err -> do
-          liftEffect $ log $ "Error: " <> show err
-          badRequest $ show err
-        Right _ -> ok "Register success"
+  parsed <- expandErr $ parseUserFromJson str
+  expandErr $ (userToResponse <<< register) parsed.user
+
+  where
+  parseUserFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserCreateInput }
+  parseUserFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
+
+  userToResponse :: forall errs. Om {} (userRepoErr :: String | errs) UserOutput -> Om {} (userRepoErr :: String | errs) Response
+  userToResponse userOm = userOm >>= \user -> ok $ show user
+
+  errorHandlers =
+    { exception: \err ->
+        liftEffect (log $ "Exception: " <> show err) *> internalServerError "Opps, something went wrong"
+    , userRepoErr: \err -> badRequest $ show err
+    , parsingError: \err -> badRequest $ show err
+    }
+
+  -- com :: { user :: UserCreateInput } -> Om { | ctx } (userRepoErr :: String) Response
+  -- com = userToResponse <<< register <<< _.user
 
 mkUserRouter _ { route: Register } = notFound
 

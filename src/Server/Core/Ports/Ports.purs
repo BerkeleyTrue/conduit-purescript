@@ -11,6 +11,7 @@ import Server.Core.Domain.Comment (CommentId, Comment)
 import Server.Core.Domain.User (Email, User, UserId, AuthorId)
 import Server.Infra.Data.Route (Limit)
 import Slug (Slug)
+import Yoga.Om (Om)
 
 type UserCreateInput =
   { username :: Username
@@ -18,14 +19,14 @@ type UserCreateInput =
   , password :: String
   }
 
-newtype UserRepo m = UserRepo
-  { create :: UserCreateInput -> m (Either String User)
-  , getById :: UserId -> m (Either String User)
-  , getByUsername :: Username -> m (Either String User)
-  , getByEmail :: Email -> m (Either String User)
-  , update :: UserId -> (User -> User) -> m (Either String User)
-  , follow :: UserId -> AuthorId -> m (Either String User)
-  , unfollow :: UserId -> AuthorId -> m (Either String User)
+newtype UserRepo ctx = UserRepo
+  { create :: UserCreateInput -> Om { | ctx } (userRepoErr :: String) User
+  , getById :: UserId -> Om { | ctx } (userRepoErr :: String) User
+  , getByUsername :: Username -> Om { | ctx } (userRepoErr :: String) User
+  , getByEmail :: Email -> Om { | ctx } (userRepoErr :: String) User
+  , update :: UserId -> (User -> User) -> Om { | ctx } (userRepoErr :: String) User
+  , follow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) User
+  , unfollow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) User
   }
 
 type ArticleCreateInput =

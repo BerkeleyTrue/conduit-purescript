@@ -42,10 +42,10 @@ newtype ArticleService m = ArticleService
 derive instance newtypeArticleService :: Newtype (ArticleService m) _
 
 listArticles
-  :: forall m
+  :: forall m ctx
    . MonadEffect m
   => ArticleRepo m
-  -> UserService m
+  -> UserService ctx
   -> { userId :: UserId, input :: ArticleListInput }
   -> m (Either String (List ArticleOutput))
 listArticles (ArticleRepo { list }) userService { userId, input } = runExceptT do
