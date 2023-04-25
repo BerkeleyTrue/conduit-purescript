@@ -6,6 +6,7 @@ module Server.Core.Services.Articles
 
 import Prelude
 
+import Conduit.Yoga.Om (fromAffThrowLeftAsOm)
 import Data.Date (Date)
 import Data.List (List, catMaybes)
 import Data.Maybe (Maybe(..))
@@ -17,7 +18,7 @@ import Server.Core.Domain.User (AuthorId, UserId)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
 import Slug (Slug)
-import Yoga.Om (Om, expandCtx, fromAff, handleErrors, throw, throwLeftAsM)
+import Yoga.Om (Om, expandCtx, fromAff, handleErrors)
 
 type ArticleOutput =
   { slug :: Slug
@@ -78,4 +79,4 @@ mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService =
     }
   where
   getBySlug' :: Slug -> Om {} (articleServiceError :: String) Article
-  getBySlug' = (_ >>= throwLeftAsM (\err -> throw { articleServiceError: err })) <<< fromAff <<< getBySlug
+  getBySlug' = fromAffThrowLeftAsOm (\err -> { articleServiceError: err }) <<< getBySlug
