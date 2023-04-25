@@ -6,20 +6,18 @@ module Server.Core.Services.Articles
 
 import Prelude
 
-import Control.Monad.Cont (lift)
-import Control.Monad.Except (ExceptT(..), runExceptT)
 import Data.Date (Date)
-import Data.Either (Either(..))
 import Data.List (List, catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
-import Effect.Class (class MonadEffect)
+import Effect.Aff (Aff)
 import Server.Core.Domain.Article (Article, Tag)
 import Server.Core.Domain.User (AuthorId, UserId)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
 import Slug (Slug)
+import Yoga.Om (Om, expandCtx, fromAff, handleErrors, throw, throwLeftAsM)
 
 type ArticleOutput =
   { slug :: Slug
@@ -34,53 +32,50 @@ type ArticleOutput =
   , author :: PublicProfile
   }
 
-newtype ArticleService m = ArticleService
-  { list :: { userId :: UserId, input :: ArticleListInput } -> m (Either String (List ArticleOutput))
-  , getBySlug :: Slug -> m (Either String Article)
+newtype ArticleService = ArticleService
+  { list :: { userId :: UserId, input :: ArticleListInput } -> Om {} () (List ArticleOutput)
+  , getBySlug :: Slug -> Om {} (articleServiceError :: String) Article
   }
 
-derive instance newtypeArticleService :: Newtype (ArticleService m) _
+derive instance newtypeArticleService :: Newtype ArticleService _
 
 listArticles
-  :: forall m ctx
-   . MonadEffect m
-  => ArticleRepo m
-  -> UserService ctx
+  :: forall ctx
+   . ArticleRepo Aff
+  -> UserService ()
   -> { userId :: UserId, input :: ArticleListInput }
-  -> m (Either String (List ArticleOutput))
-listArticles (ArticleRepo { list }) userService { userId, input } = runExceptT do
-  articles <- lift $ list input
-  articlesOutput <- lift $ (catMaybes <$> traverse mapArticle articles)
+  -> Om { | ctx } () (List ArticleOutput)
+listArticles (ArticleRepo { list }) userService { userId, input } = do
+  articles <- fromAff $ list input
+  articlesOutput <- catMaybes <$> traverse mapArticle articles
   pure $ articlesOutput
 
   where
+  getProfile :: AuthorId -> Om {} (userRepoErr :: String) PublicProfile
   getProfile = ((unwrap userService).getProfile) userId
 
-  getProfile' :: AuthorId -> ExceptT String m PublicProfile
-  getProfile' = ExceptT <<< getProfile
+  mapArticle :: Article -> Om { | ctx } () (Maybe ArticleOutput)
+  mapArticle { slug, title, description, body, tagList, createdAt, updatedAt, authorId } = handleErrors { userRepoErr: pure <<< const Nothing } do
+    profile <- expandCtx $ getProfile authorId
+    pure $ Just
+      { slug
+      , title
+      , description
+      , body
+      , tagList
+      , createdAt
+      , updatedAt
+      , favorited: false
+      , favoritesCount: 0
+      , author: profile
+      }
 
-  mapArticle :: Article -> m (Maybe ArticleOutput)
-  mapArticle { slug, title, description, body, tagList, createdAt, updatedAt, authorId } = do
-    profile' <- runExceptT $ getProfile' authorId
-    pure $ case profile' of
-      Left _ -> Nothing
-      Right profile ->
-        Just
-          { slug
-          , title
-          , description
-          , body
-          , tagList
-          , createdAt
-          , updatedAt
-          , favorited: false
-          , favoritesCount: 0
-          , author: profile
-          }
-
-mkArticleService :: forall m. MonadEffect m => ArticleRepo m -> UserService m -> ArticleService m
+mkArticleService :: ArticleRepo Aff -> UserService () -> ArticleService
 mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService =
   ArticleService
-    { getBySlug
+    { getBySlug: getBySlug'
     , list: listArticles articlesRepo userService
     }
+  where
+  getBySlug' :: Slug -> Om {} (articleServiceError :: String) Article
+  getBySlug' = (_ >>= throwLeftAsM (\err -> throw { articleServiceError: err })) <<< fromAff <<< getBySlug

@@ -14,5 +14,5 @@ type AppRoute = Either ApiRoute MetaRoute
 route :: RouteDuplex' AppRoute
 route = (root $ prefix "api" apiRoute) <+> metaRoute
 
-router :: forall ctx. Om { | ctx } () (Router AppRoute)
+router :: Om {} () (Router AppRoute)
 router = apiRouter <#> flip orElse metaRouter
