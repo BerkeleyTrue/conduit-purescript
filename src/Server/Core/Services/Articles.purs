@@ -43,7 +43,7 @@ derive instance newtypeArticleService :: Newtype ArticleService _
 listArticles
   :: forall ctx
    . ArticleRepo Aff
-  -> UserService ()
+  -> UserService
   -> { userId :: UserId, input :: ArticleListInput }
   -> Om { | ctx } () (List ArticleOutput)
 listArticles (ArticleRepo { list }) userService { userId, input } = do
@@ -71,7 +71,7 @@ listArticles (ArticleRepo { list }) userService { userId, input } = do
       , author: profile
       }
 
-mkArticleService :: ArticleRepo Aff -> UserService () -> ArticleService
+mkArticleService :: ArticleRepo Aff -> UserService -> ArticleService
 mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService =
   ArticleService
     { getBySlug: getBySlug'

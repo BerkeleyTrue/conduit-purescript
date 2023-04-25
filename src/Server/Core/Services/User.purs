@@ -47,17 +47,17 @@ type PublicProfile =
   , following :: Boolean
   }
 
-newtype UserService ctx = UserService
-  { register :: UserCreateInput -> Om { | ctx } (userRepoErr :: String) UserOutput
-  , login :: UserLoginInput -> Om { | ctx } (userRepoErr :: String) UserOutput
-  , getUser :: UserId -> Om { | ctx } (userRepoErr :: String) UserOutput
-  , getProfile :: AuthorId -> UserId -> Om { | ctx } (userRepoErr :: String) PublicProfile
-  , update :: UserId -> UpdateUserInput -> Om { | ctx } (userRepoErr :: String) UserOutput
-  , follow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
-  , unfollow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+newtype UserService = UserService
+  { register :: UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
+  , login :: UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
+  , getUser :: UserId -> Om {} (userRepoErr :: String) UserOutput
+  , getProfile :: AuthorId -> UserId -> Om {} (userRepoErr :: String) PublicProfile
+  , update :: UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
+  , follow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
+  , unfollow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
   }
 
-derive instance newtypeUserService :: Newtype (UserService m) _
+derive instance newtypeUserService :: Newtype (UserService) _
 
 formatUserOutput :: User -> UserOutput
 formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
@@ -71,10 +71,10 @@ formatUserToPublicProfile (Just authorToFollow) { username, bio, image, followin
   }
 formatUserToPublicProfile Nothing { username, bio, image } = { username, bio, image, following: false }
 
-registerUser :: forall ctx. UserRepo ctx -> UserCreateInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+registerUser :: UserRepo -> UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
 registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
 
-loginUser :: forall ctx. UserRepo ctx -> UserLoginInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+loginUser :: UserRepo -> UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
 loginUser (UserRepo { getByEmail }) { username, email, password } = do
   { password: storedPassword, bio, image } <- getByEmail email
   (isPasswordValid :: Boolean) <- (fromAff $ comparePasswords password storedPassword) >>= throwLeftAsM (\err -> throw { userRepoErr: "Error while comparing passwords: " <> err })
@@ -82,19 +82,19 @@ loginUser (UserRepo { getByEmail }) { username, email, password } = do
   if isPasswordValid then pure { email, bio, image, username, token: "token" }
   else throw { userRepoErr: "Invalid email or password" }
 
-getUser :: forall ctx. UserRepo ctx -> UserId -> Om { | ctx } (userRepoErr :: String) UserOutput
+getUser :: UserRepo -> UserId -> Om {} (userRepoErr :: String) UserOutput
 getUser (UserRepo { getById }) userId = do
   { email, username, bio, image } <- getById userId
   pure { email, username, bio, image, token: "token" }
 
 -- TODO: add following field
-getUserProfile :: forall ctx. UserRepo ctx -> AuthorId -> UserId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+getUserProfile :: UserRepo -> AuthorId -> UserId -> Om {} (userRepoErr :: String) PublicProfile
 getUserProfile (UserRepo { getById }) _ userId = do
   { username, bio, image } <- getById userId
   pure $ { username, bio, image, following: false }
 
 -- TODO: add validation for password/email
-updateUser :: forall ctx. UserRepo ctx -> UserId -> UpdateUserInput -> Om { | ctx } (userRepoErr :: String) UserOutput
+updateUser :: UserRepo -> UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
 updateUser (UserRepo { update }) userId input = do
   now <- liftEffect $ nowDate
   update userId
@@ -108,19 +108,19 @@ updateUser (UserRepo { update }) userId input = do
         }
     ) >>= pure <<< formatUserOutput
 
-followUser :: forall ctx. UserRepo ctx -> UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+followUser :: UserRepo -> UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
 followUser (UserRepo { follow }) userId authorId =
   follow userId authorId <#> toProfile
   where
   toProfile = formatUserToPublicProfile (Just authorId)
 
-unfollowUser :: forall ctx. UserRepo ctx -> UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) PublicProfile
+unfollowUser :: UserRepo -> UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
 unfollowUser (UserRepo { unfollow }) userId authorId =
   unfollow userId authorId >>= pure <<< toProfile
   where
   toProfile = formatUserToPublicProfile (Just authorId)
 
-mkUserService :: forall ctx. UserRepo ctx -> Om { | ctx } () (UserService ctx)
+mkUserService :: UserRepo -> Om {} () UserService
 mkUserService repo = pure $ UserService
   { register: registerUser repo
   , login: loginUser repo

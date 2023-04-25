@@ -19,14 +19,14 @@ type UserCreateInput =
   , password :: String
   }
 
-newtype UserRepo ctx = UserRepo
-  { create :: UserCreateInput -> Om { | ctx } (userRepoErr :: String) User
-  , getById :: UserId -> Om { | ctx } (userRepoErr :: String) User
-  , getByUsername :: Username -> Om { | ctx } (userRepoErr :: String) User
-  , getByEmail :: Email -> Om { | ctx } (userRepoErr :: String) User
-  , update :: UserId -> (User -> User) -> Om { | ctx } (userRepoErr :: String) User
-  , follow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) User
-  , unfollow :: UserId -> AuthorId -> Om { | ctx } (userRepoErr :: String) User
+newtype UserRepo = UserRepo
+  { create :: UserCreateInput -> Om {} (userRepoErr :: String) User
+  , getById :: UserId -> Om {} (userRepoErr :: String) User
+  , getByUsername :: Username -> Om {} (userRepoErr :: String) User
+  , getByEmail :: Email -> Om {} (userRepoErr :: String) User
+  , update :: UserId -> (User -> User) -> Om {} (userRepoErr :: String) User
+  , follow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) User
+  , unfollow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) User
   }
 
 type ArticleCreateInput =

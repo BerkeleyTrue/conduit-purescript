@@ -33,7 +33,7 @@ userRoute = sum
   }
 
 type UserRouterDeps =
-  { userService :: UserService ()
+  { userService :: UserService
   }
 
 mkUserRouter :: UserRouterDeps -> Router UserRoute
@@ -56,9 +56,6 @@ mkUserRouter { userService: (UserService { register }) } { route: Register, meth
     , userRepoErr: \err -> badRequest $ show err
     , parsingError: \err -> badRequest $ show err
     }
-
-  -- com :: { user :: UserCreateInput } -> Om { | ctx } (userRepoErr :: String) Response
-  -- com = userToResponse <<< register <<< _.user
 
 mkUserRouter _ { route: Register } = notFound
 

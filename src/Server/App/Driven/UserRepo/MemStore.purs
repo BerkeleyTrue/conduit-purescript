@@ -99,7 +99,7 @@ unfollowUser storeRef userId authorId =
   where
   updateFn = \user@{ following } -> user { following = filter (_ /= authorId) following }
 
-mkMemoryUserRepo :: forall ctx. UserMap -> Om { | ctx } () (UserRepo ctx)
+mkMemoryUserRepo :: forall ctx. UserMap -> Om { | ctx } () UserRepo
 mkMemoryUserRepo initialState = do
   let
     { usernameToId, emailToId } =
