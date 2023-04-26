@@ -6,13 +6,14 @@ module Server.Core.Services.Articles
 
 import Prelude
 
+import Conduit.Data.Username (Username, Authorname)
 import Data.Date (Date)
 import Data.List (List, catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Server.Core.Domain.Article (Article, Tag)
-import Server.Core.Domain.User (AuthorId, UserId)
+import Server.Core.Domain.User (UserId)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
 import Slug (Slug)
@@ -32,7 +33,7 @@ type ArticleOutput =
   }
 
 newtype ArticleService = ArticleService
-  { list :: { userId :: UserId, input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (List ArticleOutput)
+  { list :: { userId :: (Maybe UserId), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (List ArticleOutput)
   , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
   }
 
@@ -41,7 +42,7 @@ derive instance newtypeArticleService :: Newtype ArticleService _
 listArticles
   :: ArticleRepo
   -> UserService
-  -> { userId :: UserId, input :: ArticleListInput }
+  -> { userId :: (Maybe UserId), input :: ArticleListInput }
   -> Om {} (articleRepoErr :: String) (List ArticleOutput)
 listArticles (ArticleRepo { list }) userService { userId, input } = do
   articles <- expandErr $ list input
@@ -49,12 +50,17 @@ listArticles (ArticleRepo { list }) userService { userId, input } = do
   pure $ articlesOutput
 
   where
-  getProfile :: AuthorId -> Om {} (userRepoErr :: String) PublicProfile
-  getProfile = ((unwrap userService).getProfile) userId
+  getUsernameFromId = (unwrap userService).getUsernameFromId
+
+  getProfile' = (unwrap userService).getProfile
+
+  getProfile :: Authorname -> Om {} (userRepoErr :: String) PublicProfile
+  getProfile = flip getProfile' userId
 
   mapArticle :: Article -> Om {} () (Maybe ArticleOutput)
   mapArticle { slug, title, description, body, tagList, createdAt, updatedAt, authorId } = handleErrors { userRepoErr: pure <<< const Nothing } do
-    profile <- expandCtx $ getProfile authorId
+    (authorname :: Username) <- getUsernameFromId authorId
+    profile <- expandCtx $ getProfile authorname
     pure $ Just
       { slug
       , title

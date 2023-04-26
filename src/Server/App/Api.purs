@@ -12,7 +12,7 @@ import Data.Map as Map
 import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, sum, (/), (<+>), type (<+>))
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, articlesRouter)
-import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, profilesRouter)
+import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, mkProfilesRouter)
 import Server.App.Drivers.User (UserRoute, mkUserRouter, userRoute)
 import Server.Core.Services.User (mkUserService)
 import Server.Infra.HttPurple.Routes ((</>))
@@ -38,5 +38,7 @@ apiRouter :: Om {} () (OmRouter ApiRoute)
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
   userService <- mkUserService userRepo
-  let userRouter = mkUserRouter { userService: userService }
+  let
+    userRouter = mkUserRouter { userService: userService }
+    profilesRouter = mkProfilesRouter { userService: userService }
   pure $ articlesRouter </> profilesRouter </> userRouter </> apiRootRouter

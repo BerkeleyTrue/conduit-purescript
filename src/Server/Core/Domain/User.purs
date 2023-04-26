@@ -1,5 +1,6 @@
 module Server.Core.Domain.User
   ( User(..)
+  , Author
   , UserId(..)
   , AuthorId
   , Email
@@ -37,3 +38,5 @@ type User =
   , createdAt :: Date
   , updatedAt :: Maybe Date
   }
+
+type Author = User

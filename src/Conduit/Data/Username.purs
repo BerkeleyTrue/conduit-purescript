@@ -1,29 +1,33 @@
 module Conduit.Data.Username
-  ( Username
+  ( Username(..)
+  , Authorname
   , UsernameValidationErrors(..)
-  , makeUsername
+  , mkUsername
   ) where
 
 import Prelude
 
 import Conduit.Data.String (isWordAlphaNum, startsWithLetter)
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
 import Data.String as String
 import Foreign (ForeignError(..), fail)
 import Yoga.JSON (class ReadForeign, readImpl)
 
 newtype Username = Username String
+type Authorname = Username
 
+derive instance genericUsername :: Generic Username _
 derive instance eqUsername :: Eq Username
 derive instance ordUsername :: Ord Username
 
 instance showUsername :: Show Username where
-  show (Username username) = "username: " <> username
+  show (Username username) = username
 
 instance ReadForeign Username where
   readImpl json = do
     (username :: String) <- readImpl json
-    let username' = makeUsername username
+    let username' = mkUsername username
     case username' of
       Left err -> fail $ ForeignError $ show err
       Right username'' -> pure username''
@@ -38,8 +42,8 @@ instance showUsernameValidationErrors :: Show UsernameValidationErrors where
   show TooShort = "Username must be at least 3 characters long"
   show MustStartWithLetter = "Username must start with a letter"
 
-makeUsername :: String -> Either UsernameValidationErrors Username
-makeUsername username =
+mkUsername :: String -> Either UsernameValidationErrors Username
+mkUsername username =
   if String.length username < 3 then
     Left TooShort
   else if not (isWordAlphaNum username) then

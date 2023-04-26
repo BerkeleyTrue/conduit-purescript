@@ -1,7 +1,14 @@
-module Server.Infra.Data.Route (Limit(..), limit, slug) where
+module Server.Infra.Data.Route
+  ( Limit(..)
+  , limit
+  , slug
+  , usernameR
+  ) where
 
 import Prelude
 
+import Conduit.Data.Username (Username, mkUsername)
+import Data.Bifunctor (lmap)
 import Data.Either (note, Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Int as Int
@@ -31,3 +38,6 @@ stringToLimit val = case (maybe (Left "Could not parse") Right <<< Int.fromStrin
 
 limit :: RouteDuplex' String -> RouteDuplex' Limit
 limit = as limitToString stringToLimit
+
+usernameR :: RouteDuplex' String -> RouteDuplex' Username
+usernameR = as show (lmap show <<< mkUsername)
