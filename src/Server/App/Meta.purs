@@ -8,7 +8,7 @@ import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import HTTPurple (Method(..), RouteDuplex', mkRoute, noArgs, notFound, ok, (/))
-import Server.Infra.HttPurple.Types (Router)
+import Server.Infra.HttPurple.Types (OmRouter)
 
 data MetaRoute = Ping
 
@@ -19,6 +19,6 @@ metaRoute = mkRoute
   { "Ping": "ping" / noArgs
   }
 
-metaRouter :: Router MetaRoute
+metaRouter :: OmRouter MetaRoute
 metaRouter { route: Ping, method: Get } = ok "pong"
 metaRouter { route: Ping } = notFound

@@ -2,17 +2,17 @@ module Server.App (route, router) where
 
 import Prelude
 
-import Data.Either (Either)
-import HTTPurple (RouteDuplex', orElse, prefix, root, (<+>))
+import HTTPurple (RouteDuplex', prefix, root, (<+>), type (<+>))
 import Server.App.Api (ApiRoute, apiRoute, apiRouter)
 import Server.App.Meta (MetaRoute, metaRoute, metaRouter)
-import Server.Infra.HttPurple.Types (Router)
+import Server.Infra.HttPurple.Routes (omOrElse)
+import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.Om (Om)
 
-type AppRoute = Either ApiRoute MetaRoute
+type AppRoute = ApiRoute <+> MetaRoute
 
 route :: RouteDuplex' AppRoute
 route = (root $ prefix "api" apiRoute) <+> metaRoute
 
-router :: Om {} () (Router AppRoute)
-router = apiRouter <#> flip orElse metaRouter
+router :: Om {} () (OmRouter AppRoute)
+router = apiRouter <#> flip omOrElse metaRouter

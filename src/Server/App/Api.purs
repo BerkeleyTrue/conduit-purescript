@@ -7,36 +7,36 @@ module Server.App.Api
 
 import Prelude hiding ((/))
 
-import Data.Either (Either)
 import Data.Generic.Rep (class Generic)
 import Data.Map as Map
-import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, orElse, sum, (/), (<+>))
+import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, sum, (/), (<+>), type (<+>))
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, articlesRouter)
 import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, profilesRouter)
 import Server.App.Drivers.User (UserRoute, mkUserRouter, userRoute)
 import Server.Core.Services.User (mkUserService)
-import Server.Infra.HttPurple.Types (Router)
-import Yoga.Om (Om)
+import Server.Infra.HttPurple.Routes ((</>))
+import Server.Infra.HttPurple.Types (OmRouter)
+import Yoga.Om (Om, fromAff)
 
 data ApiRootRoute = Hello
 
 derive instance genericApiRoute :: Generic ApiRootRoute _
 
-type ApiRoute = Either ArticlesRoute (Either ProfilesRoute (Either UserRoute ApiRootRoute))
+type ApiRoute = ArticlesRoute <+> ProfilesRoute <+> UserRoute <+> ApiRootRoute
 
 apiRoute :: RouteDuplex' ApiRoute
 apiRoute = articlesRoute <+> profilesRoute <+> userRoute <+> sum
   { "Hello": "hello" / noArgs
   }
 
-apiRootRouter :: Router ApiRootRoute
-apiRootRouter { route: Hello, method: Get } = ok "Hello Api"
-apiRootRouter { route: Hello } = notFound
+apiRootRouter :: OmRouter ApiRootRoute
+apiRootRouter { route: Hello, method: Get } = fromAff $ ok "Hello Api"
+apiRootRouter { route: Hello } = fromAff $ notFound
 
-apiRouter :: Om {} () (Router ApiRoute)
+apiRouter :: Om {} () (OmRouter ApiRoute)
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
   userService <- mkUserService userRepo
   let userRouter = mkUserRouter { userService: userService }
-  pure (orElse articlesRouter $ orElse profilesRouter $ orElse userRouter apiRootRouter)
+  pure $ articlesRouter </> profilesRouter </> userRouter </> apiRootRouter

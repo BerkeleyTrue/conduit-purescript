@@ -5,13 +5,15 @@ module Server.Infra.HttPurple
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
-import HTTPurple (RouteDuplex', response, serve)
+import Effect.Console (log, error)
+import Effect.Exception (message)
+import HTTPurple (RouteDuplex', internalServerError, response, serve)
 import HTTPurple.Status as Status
 import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
-import Server.Infra.HttPurple.Types (Router)
+import Server.Infra.HttPurple.Server (ExceptionHandler, omToRouter)
+import Server.Infra.HttPurple.Types (Router, OmRouter)
 import Server.Infra.Node.GracefullShutdown (gracefullShutdown)
 import Yoga.Om (Om, ask)
 
@@ -20,16 +22,24 @@ notFoundHandler = const $ response Status.notFound "Could not find the requested
 
 type ServerCtx route =
   { route :: RouteDuplex' route
-  , router :: Router route
+  , router :: OmRouter route
   , port :: Int
   }
 
-omServer :: forall route. Om (ServerCtx route) () Unit
-omServer = do
+defaultOnError :: ExceptionHandler
+defaultOnError = \err -> do
+  liftEffect $ error $ message err
+  internalServerError "Internal server error."
+
+omServer :: forall route. (Maybe ExceptionHandler) -> Om (ServerCtx route) () Unit
+omServer maybeOnError = do
   { port, route, router } <- ask
+
   let
+    onError = fromMaybe defaultOnError maybeOnError
+    enhanceRouter = developmentLogFormat <<< omToRouter onError
     onStarted = log $ "Server started on port " <> show port
     opts = { port, onStarted, notFoundHandler: Just notFoundHandler }
-    settings = { route, router: developmentLogFormat router }
+    settings = { route, router: enhanceRouter router }
 
   liftEffect $ serve opts settings >>= gracefullShutdown

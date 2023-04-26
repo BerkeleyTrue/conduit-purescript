@@ -8,15 +8,13 @@ module Server.App.Drivers.User
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
-import Effect.Class (liftEffect)
-import Effect.Class.Console (log)
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest, internalServerError, noArgs, notFound, ok, sum, toString, (/))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest, noArgs, notFound, ok, sum, toString, (/))
 import Server.Core.Ports.Ports (UserCreateInput)
 import Server.Core.Services.User (UserService(..), UserOutput)
-import Server.Infra.HttPurple.Types (Router)
+import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON)
-import Yoga.Om (Om, expandErr, fromAff, runOm, throw, throwLeftAsM)
+import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
 
 data UserRoute
   = Register
@@ -36,10 +34,9 @@ type UserRouterDeps =
   { userService :: UserService
   }
 
-mkUserRouter :: UserRouterDeps -> Router UserRoute
-mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = runOm {} errorHandlers do
+mkUserRouter :: UserRouterDeps -> OmRouter UserRoute
+mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = handleErrors errorHandlers do
   str <- fromAff $ toString body
-  liftEffect $ log str
   parsed <- expandErr $ parseUserFromJson str
   expandErr $ (userToResponse <<< register) parsed.user
 
@@ -51,9 +48,7 @@ mkUserRouter { userService: (UserService { register }) } { route: Register, meth
   userToResponse userOm = userOm >>= \user -> ok $ show user
 
   errorHandlers =
-    { exception: \err ->
-        liftEffect (log $ "Exception: " <> show err) *> internalServerError "Opps, something went wrong"
-    , userRepoErr: \err -> badRequest $ show err
+    { userRepoErr: \err -> badRequest $ show err
     , parsingError: \err -> badRequest $ show err
     }
 

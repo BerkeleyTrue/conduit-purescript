@@ -17,7 +17,7 @@ import Effect.Class (liftEffect)
 import Effect.Class as Effect.Class
 import Effect.Class.Console as Console
 import Effect.Now as Effect.Now
-import HTTPurple (Request, Response(..))
+import HTTPurple (Request, Response)
 import HTTPurple as HTTP
 import Server.Infra.HttPurple.Types (Middleware')
 

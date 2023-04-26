@@ -10,7 +10,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
 import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
 import Server.Infra.Data.Route as Route
-import Server.Infra.HttPurple.Types (Router)
+import Server.Infra.HttPurple.Types (OmRouter)
 import Slug (Slug)
 import Slug as Slug
 
@@ -52,7 +52,7 @@ articlesRoute = prefix "articles" $ sum
   , "Fav": Route.slug segment / "favorite"
   }
 
-articlesRouter :: Router ArticlesRoute
+articlesRouter :: OmRouter ArticlesRoute
 articlesRouter
   { route: List
       { limit
