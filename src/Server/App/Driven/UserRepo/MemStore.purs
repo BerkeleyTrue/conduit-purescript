@@ -33,7 +33,7 @@ type MemStore =
 
 createUser :: forall ctx. AVar MemStore -> UserCreateInput -> Om { | ctx } (userRepoErr :: String) User
 createUser storeRef { username, email, password } = do
-  store@{ byId } <- fromAff $ Ref.take storeRef
+  store@{ byId, usernameToId, emailToId } <- fromAff $ Ref.take storeRef
   userId <- liftEffect $ UUID.genUUID <#> (\uuid -> UserId uuid)
   createdNow <- liftEffect $ nowDate
 
@@ -49,8 +49,11 @@ createUser storeRef { username, email, password } = do
       , bio: Nothing
       , image: Nothing
       }
-    -- TODO: add usernameToId and emailToId
-    newStore = store { byId = Map.insert userId user $ byId }
+    newStore = store
+      { byId = Map.insert userId user $ byId
+      , usernameToId = Map.insert username userId usernameToId
+      , emailToId = Map.insert email userId emailToId
+      }
 
   fromAff $ Ref.put newStore storeRef
   pure $ user
