@@ -11,9 +11,10 @@ import Prelude
 
 import Conduit.Data.Password (comparePasswords)
 import Conduit.Data.Username (Username, Authorname)
+import Data.Either (Either(..))
 import Data.Foldable (any)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
 import Server.Core.Domain.User (AuthorId, Email, User, UserId, Author)
@@ -55,17 +56,19 @@ newtype UserService = UserService
   { register :: UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
   , login :: UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
   , getUser :: UserId -> Om {} (userRepoErr :: String) UserOutput
-  , getProfile :: Authorname -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
-  , getUsernameFromId :: UserId -> Om {} (userRepoErr :: String) Username
+  , getProfile :: (Either AuthorId Authorname) -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
   , update :: UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
-  , follow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
-  , unfollow :: UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
+  , follow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
+  , unfollow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
   }
 
 derive instance newtypeUserService :: Newtype (UserService) _
 
 formatUserOutput :: User -> UserOutput
 formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
+
+getIdFromUsername :: UserRepo -> Username -> Om {} (userRepoErr :: String) UserId
+getIdFromUsername (UserRepo { getByUsername }) username = getByUsername username >>= pure <<< _.userId
 
 formatUserToPublicProfile :: Maybe UserId -> Author -> PublicProfile
 formatUserToPublicProfile (Just userToFollow) { username, bio, image, following } =
@@ -92,15 +95,13 @@ getUser (UserRepo { getById }) userId = do
   { email, username, bio, image } <- getById userId
   pure { email, username, bio, image, token: "token" }
 
-getUserProfile :: UserRepo -> Authorname -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
-getUserProfile (UserRepo { getByUsername }) authorname userId = do
-  author <- getByUsername authorname
-  pure $ formatUserToPublicProfile userId author
+getUserProfile :: UserRepo -> (Either AuthorId Authorname) -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
+getUserProfile (UserRepo { getByUsername, getById }) authorIdOrName userId = do
+  author <- case authorIdOrName of
+    Left authorId -> getById authorId
+    Right authorname -> getByUsername authorname
 
-getUsernameFromId :: UserRepo -> UserId -> Om {} (userRepoErr :: String) Username
-getUsernameFromId (UserRepo { getById }) userId = do
-  { username } <- getById userId
-  pure username
+  pure $ formatUserToPublicProfile userId author
 
 -- TODO: add validation for password/email
 updateUser :: UserRepo -> UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
@@ -117,17 +118,25 @@ updateUser (UserRepo { update }) userId input = do
         }
     ) >>= pure <<< formatUserOutput
 
-followUser :: UserRepo -> UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
-followUser (UserRepo { follow }) userId authorId =
-  follow userId authorId <#> toProfile
-  where
-  toProfile = formatUserToPublicProfile (Just authorId)
+followUser :: UserRepo -> UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
+followUser userRepo userId authorIdOrName = do
+  authorId <- case authorIdOrName of
+    Left authorId -> pure authorId
+    Right authorname -> getIdFromUsername userRepo authorname
 
-unfollowUser :: UserRepo -> UserId -> AuthorId -> Om {} (userRepoErr :: String) PublicProfile
-unfollowUser (UserRepo { unfollow }) userId authorId =
-  unfollow userId authorId >>= pure <<< toProfile
+  follow userId authorId <#> formatUserToPublicProfile (Just authorId)
   where
-  toProfile = formatUserToPublicProfile (Just authorId)
+  follow = (unwrap userRepo).follow
+
+unfollowUser :: UserRepo -> UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
+unfollowUser userRepo userId authorIdOrName = do
+  authorId <- case authorIdOrName of
+    Left authorId -> pure authorId
+    Right authorname -> getIdFromUsername userRepo authorname
+
+  unfollow userId authorId <#> formatUserToPublicProfile (Just authorId)
+  where
+  unfollow = (unwrap userRepo).unfollow
 
 mkUserService :: UserRepo -> Om {} () UserService
 mkUserService repo = pure $ UserService
@@ -135,7 +144,6 @@ mkUserService repo = pure $ UserService
   , login: loginUser repo
   , getUser: getUser repo
   , getProfile: getUserProfile repo
-  , getUsernameFromId: getUsernameFromId repo
   , update: updateUser repo
   , follow: followUser repo
   , unfollow: unfollowUser repo

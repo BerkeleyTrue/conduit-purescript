@@ -6,14 +6,14 @@ module Server.Core.Services.Articles
 
 import Prelude
 
-import Conduit.Data.Username (Username, Authorname)
 import Data.Date (Date)
+import Data.Either (Either(..))
 import Data.List (List, catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Server.Core.Domain.Article (Article, Tag)
-import Server.Core.Domain.User (UserId)
+import Server.Core.Domain.User (UserId, AuthorId)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
 import Slug (Slug)
@@ -50,17 +50,14 @@ listArticles (ArticleRepo { list }) userService { userId, input } = do
   pure $ articlesOutput
 
   where
-  getUsernameFromId = (unwrap userService).getUsernameFromId
-
   getProfile' = (unwrap userService).getProfile
 
-  getProfile :: Authorname -> Om {} (userRepoErr :: String) PublicProfile
-  getProfile = flip getProfile' userId
+  getProfile :: AuthorId -> Om {} (userRepoErr :: String) PublicProfile
+  getProfile = flip getProfile' userId <<< Left
 
   mapArticle :: Article -> Om {} () (Maybe ArticleOutput)
   mapArticle { slug, title, description, body, tagList, createdAt, updatedAt, authorId } = handleErrors { userRepoErr: pure <<< const Nothing } do
-    (authorname :: Username) <- getUsernameFromId authorId
-    profile <- expandCtx $ getProfile authorname
+    profile <- expandCtx $ getProfile authorId
     pure $ Just
       { slug
       , title
