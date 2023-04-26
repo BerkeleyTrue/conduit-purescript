@@ -14,9 +14,9 @@ import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
 
 -- | Turn an Aff of Either left right and an error constructor into an Om of right and an error record.
 --  This is useful for turning Affs of Either into Om.
--- example usage:
---   fromAffThrowLeftAsOm (\err -> { oopsie: err }) (Aff (Left "Oops, something went wrong!")) -- > Om ctx { oopsie: String } String
---   fromAffThrowLeftAsOm (\err -> { oopsie: err }) (Aff (Right "You're beautiful")) -- > Om ctx { oopsie: String } String
+--  example usage:
+--    fromAffThrowLeftAsOm (\err -> { oopsie: err }) (Aff (Left "Oops, something went wrong!")) -- > Om ctx { oopsie: String } String
+--    fromAffThrowLeftAsOm (\err -> { oopsie: err }) (Aff (Right "You're beautiful")) -- > Om ctx { oopsie: String } String
 fromAffThrowLeftAsOm
   :: forall right left err ctx errors key a otherErrors
   . RL.RowToList err (RL.Cons key a RL.Nil)

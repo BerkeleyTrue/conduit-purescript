@@ -45,13 +45,13 @@ type ArticleListInput =
   , offset :: Maybe Int
   }
 
-newtype ArticleRepo m = ArticleRepo
-  { create :: ArticleCreateInput -> m (Either String Article)
-  , getById :: ArticleId -> m (Either String Article)
-  , getBySlug :: Slug -> m (Either String Article)
-  , list :: ArticleListInput -> m (List Article)
-  , update :: ArticleId -> (Article -> Article) -> m (Either String Article)
-  , delete :: ArticleId -> m (Either String Unit)
+newtype ArticleRepo = ArticleRepo
+  { create :: ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
+  , getById :: ArticleId -> Om {} (articleRepoErr :: String) Article
+  , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
+  , list :: ArticleListInput -> Om {} (articleRepoErr :: String) (List Article)
+  , update :: ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
+  , delete :: ArticleId -> Om {} (articleRepoErr :: String) Unit
   }
 
 type CommentCreateInput =

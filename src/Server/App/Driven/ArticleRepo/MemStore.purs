@@ -4,10 +4,6 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
-import Conduit.Control.Monad.Except (maybeThrow)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.Except (runExceptT)
-import Data.Either (Either)
 import Data.Foldable (foldl)
 import Data.List (List(..))
 import Data.List as List
@@ -28,6 +24,7 @@ import Server.Core.Domain.User (AuthorId)
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
 import Server.Infra.Data.Route (Limit(..))
 import Slug (Slug, generate)
+import Yoga.Om (Om, throw, note)
 
 type ArticleMap = Map.Map ArticleId Article
 type SlugToArticle = Map.Map Slug ArticleId
@@ -39,18 +36,18 @@ type MemStore =
   , favoritedBy :: FavoritedBy
   }
 
-createArticle :: AVar MemStore -> ArticleCreateInput -> Aff (Either String Article)
-createArticle storeRef { title, description, body, tagList, authorId } = runExceptT do
+createArticle :: AVar MemStore -> ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
+createArticle storeRef { title, description, body, tagList, authorId } = do
 
   { byId, slugToId, favoritedBy } <- liftAff $ Avar.take storeRef
 
   slug <- case generate title of
     Just slug -> do
       if Map.member slug slugToId then
-        throwError $ "Expected unique slug but found a duplicate for " <> (show slug)
+        throw { articleRepoErr: "Expected unique slug but found a duplicate for " <> (show slug) }
       else
         pure slug
-    Nothing -> throwError $ "Expected a slug-able title but could not generate from " <> title
+    Nothing -> throw { articleRepoErr: "Expected a slug-able title but could not generate from " <> title }
 
   articleId <- liftEffect $ ArticleId <$> genUUID
   now <- liftEffect $ nowDate
@@ -77,16 +74,16 @@ createArticle storeRef { title, description, body, tagList, authorId } = runExce
   liftAff $ Avar.put newStore storeRef
   pure article
 
-getArticleById :: AVar MemStore -> ArticleId -> Aff (Either String Article)
-getArticleById storeRef articleId = runExceptT do
+getArticleById :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Article
+getArticleById storeRef articleId = do
   { byId } <- liftAff $ Avar.take storeRef
-  maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
-getArticleBySlug :: AVar MemStore -> Slug -> Aff (Either String Article)
-getArticleBySlug storeRef slug = runExceptT do
+getArticleBySlug :: AVar MemStore -> Slug -> Om {} (articleRepoErr :: String) Article
+getArticleBySlug storeRef slug = do
   { slugToId, byId } <- liftAff $ Avar.take storeRef
-  articleId <- maybeThrow ("Could not find article with slug " <> show slug) $ Map.lookup slug slugToId
-  maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
+  note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
 queryBuilder :: ArticleListInput -> ((Tuple Article (List AuthorId)) -> Boolean)
 queryBuilder { tag: maybeTag, author: maybeAuthor, favorited: maybeFavorited } =
@@ -103,7 +100,7 @@ queryBuilder { tag: maybeTag, author: maybeAuthor, favorited: maybeFavorited } =
   in
     \(article /\ favoritedBy) -> tagFilter article && authorFilter article && favoritedByFilter (article /\ favoritedBy)
 
-listArticles :: AVar MemStore -> ArticleListInput -> Aff (List Article)
+listArticles :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (List Article)
 listArticles storeRef input@{ limit, offset } =
   do
     { byId, favoritedBy } <- liftAff $ Avar.take storeRef
@@ -119,10 +116,10 @@ listArticles storeRef input@{ limit, offset } =
       $ List.drop (fromMaybe 0 offset)
       $ Map.values byId
 
-updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Aff (Either String Article)
-updateArticle storeRef articleId updateFn = runExceptT do
+updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
+updateArticle storeRef articleId updateFn = do
   store@{ byId } <- liftAff $ Avar.take storeRef
-  article <- maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
+  article <- note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
   let
     updatedArticle = updateFn article
@@ -131,20 +128,19 @@ updateArticle storeRef articleId updateFn = runExceptT do
   liftAff $ Avar.put newStore storeRef
   pure updatedArticle
 
-deleteArticle :: AVar MemStore -> ArticleId -> Aff (Either String Unit)
-deleteArticle storeRef articleId =
-  runExceptT do
-    { byId, slugToId, favoritedBy } <- liftAff $ Avar.take storeRef
-    { slug } <- maybeThrow ("Could not find article with id " <> show articleId) $ Map.lookup articleId byId
-    liftAff
-      $ Avar.put
-          { byId: Map.delete articleId byId
-          , slugToId: Map.delete slug slugToId
-          , favoritedBy: Map.delete articleId favoritedBy
-          }
-          storeRef
+deleteArticle :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Unit
+deleteArticle storeRef articleId = do
+  { byId, slugToId, favoritedBy } <- liftAff $ Avar.take storeRef
+  { slug } <- note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
+  liftAff
+    $ Avar.put
+        { byId: Map.delete articleId byId
+        , slugToId: Map.delete slug slugToId
+        , favoritedBy: Map.delete articleId favoritedBy
+        }
+        storeRef
 
-mkMemoryArticleStore :: ArticleMap -> Aff (ArticleRepo Aff)
+mkMemoryArticleStore :: ArticleMap -> Aff ArticleRepo
 mkMemoryArticleStore initialState = do
   let slugToId = foldl (\acc { articleId, slug } -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
   storeRef <- Avar.new { byId: initialState, slugToId, favoritedBy: Map.empty }
