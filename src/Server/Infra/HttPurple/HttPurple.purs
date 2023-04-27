@@ -20,20 +20,16 @@ import Yoga.Om (Om, ask)
 notFoundHandler :: Router Unit
 notFoundHandler = const $ response Status.notFound "Could not find the requested resource."
 
-type ServerCtx route =
-  { route :: RouteDuplex' route
-  , router :: OmRouter route
-  , port :: Int
-  }
+type ServerCtx ctx = { port :: Int | ctx}
 
 defaultOnError :: ExceptionHandler
 defaultOnError = \err -> do
   liftEffect $ error $ message err
   internalServerError "Internal server error."
 
-omServer :: forall route. (Maybe ExceptionHandler) -> Om (ServerCtx route) () Unit
-omServer maybeOnError = do
-  { port, route, router } <- ask
+omServer :: forall route ctx. RouteDuplex' route -> OmRouter route -> (Maybe ExceptionHandler) -> Om (ServerCtx ctx) () Unit
+omServer route router maybeOnError = do
+  { port } <- ask
 
   let
     onError = fromMaybe defaultOnError maybeOnError

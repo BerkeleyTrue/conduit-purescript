@@ -17,10 +17,13 @@ import Yoga.Om (runOm)
 main :: Effect Unit
 main = launchAff_ do
   loadFile
-  maybePort <- liftEffect $ runExceptT $ lookupEnv_ "PORT" >>= fromString_
-  case maybePort of
-    Right port -> runOm
-      { port }
+  maybeEnvs <- liftEffect $ runExceptT do
+    port <- lookupEnv_ "PORT" >>= fromString_
+    tokenSecret <- lookupEnv_ "TOKEN_SECRET"
+    pure { port, tokenSecret }
+  case maybeEnvs of
+    Right envs -> runOm
+      envs
       { exception: \err -> liftEffect $ throw $ show err }
       omApp
     Left err -> liftEffect $ throw err
