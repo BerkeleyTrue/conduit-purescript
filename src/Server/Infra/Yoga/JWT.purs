@@ -1,7 +1,7 @@
 -- source: https://github.com/oreshinya/purescript-simple-jwt/blob/v4.0.1/src/Node/Simple/Jwt.purs but using yoga-json
 module Server.Infra.Yoga.JWT
   ( Secret
-  , Jwt
+  , Jwt(..)
   , Algorithm(..)
   , JwtError(..)
   , fromString
