@@ -9,11 +9,11 @@ import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest, noArgs, notFound, ok, sum, toString, (/))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', jsonHeaders, noArgs, notFound, ok, ok', sum, toString, (/))
 import Server.Core.Ports.Ports (UserCreateInput)
 import Server.Core.Services.User (UserService(..), UserOutput)
 import Server.Infra.HttPurple.Types (OmRouter)
-import Yoga.JSON (readJSON)
+import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
 
 data UserRoute
@@ -35,6 +35,7 @@ type UserRouterDeps =
   }
 
 mkUserRouter :: UserRouterDeps -> OmRouter UserRoute
+-- | register a new user
 mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = handleErrors errorHandlers do
   str <- fromAff $ toString body
   parsed <- expandErr $ parseUserFromJson str
@@ -45,18 +46,20 @@ mkUserRouter { userService: (UserService { register }) } { route: Register, meth
   parseUserFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
 
   userToResponse :: forall errs. Om {} (userRepoErr :: String | errs) UserOutput -> Om {} (userRepoErr :: String | errs) Response
-  userToResponse userOm = userOm >>= \user -> ok $ show user
+  userToResponse userOm = userOm >>= ok' jsonHeaders <<< writeJSON
 
   errorHandlers =
-    { userRepoErr: \err -> badRequest $ show err
-    , parsingError: \err -> badRequest $ show err
+    { userRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
+    , parsingError: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
     }
 
 mkUserRouter _ { route: Register } = notFound
 
+-- | login a user
 mkUserRouter _ { route: Authen, method: Post } = ok "authenticate"
 mkUserRouter _ { route: Authen } = notFound
 
+-- | update the current user
 mkUserRouter _ { route: Authed, method: Put } = ok "Update user"
 mkUserRouter _ { route: Authed, method: Get } = ok "Find user"
 mkUserRouter _ { route: Authed } = notFound
