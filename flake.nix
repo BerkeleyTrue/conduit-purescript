@@ -36,6 +36,7 @@
               uuid
               dotenv
               yoga-om
+              js-date
 
               # client
               halogen
