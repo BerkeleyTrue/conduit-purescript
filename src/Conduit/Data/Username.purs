@@ -12,7 +12,7 @@ import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.String as String
 import Foreign (ForeignError(..), fail)
-import Yoga.JSON (class ReadForeign, readImpl)
+import Yoga.JSON (class ReadForeign, class WriteForeign, readImpl, writeImpl)
 
 newtype Username = Username String
 type Authorname = Username
@@ -20,6 +20,9 @@ type Authorname = Username
 derive instance genericUsername :: Generic Username _
 derive instance eqUsername :: Eq Username
 derive instance ordUsername :: Ord Username
+instance writeForiegnUsername :: WriteForeign Username
+  where
+    writeImpl (Username username) = writeImpl username
 
 instance showUsername :: Show Username where
   show (Username username) = username
