@@ -13,10 +13,10 @@ import Conduit.Data.Password (comparePasswords)
 import Conduit.Data.Username (Username, Authorname)
 import Data.Either (Either(..))
 import Data.Foldable (any)
+import Data.JSDate (now)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Effect.Class (liftEffect)
-import Effect.Now (nowDate)
 import Server.Core.Domain.User (AuthorId, Email, User, UserId, Author)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
@@ -106,7 +106,7 @@ getUserProfile (UserRepo { getByUsername, getById }) authorIdOrName userId = do
 -- TODO: add validation for password/email
 updateUser :: UserRepo -> UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
 updateUser (UserRepo { update }) userId input = do
-  now <- liftEffect $ nowDate
+  now <- liftEffect $ now
   update userId
     ( \user -> user
         { email = fromMaybe user.email input.email

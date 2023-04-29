@@ -9,8 +9,8 @@ module Server.Core.Domain.User
 import Prelude
 
 import Conduit.Data.Username (Username)
-import Data.Date (Date)
 import Data.List (List)
+import Data.JSDate (JSDate)
 import Data.Maybe (Maybe)
 import Data.UUID (UUID)
 
@@ -35,8 +35,8 @@ type User =
   , following :: List AuthorId
   , bio :: Maybe String
   , image :: Maybe String
-  , createdAt :: Date
-  , updatedAt :: Maybe Date
+  , createdAt :: JSDate
+  , updatedAt :: Maybe JSDate
   }
 
 type Author = User

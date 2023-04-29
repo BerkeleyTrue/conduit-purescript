@@ -7,6 +7,7 @@ import Prelude
 import Conduit.Data.Username (Username)
 import Control.Monad.Except (catchError, throwError)
 import Data.Foldable (foldl)
+import Data.JSDate (now)
 import Data.List (List(..), nub, filter)
 import Data.Map (Map)
 import Data.Map as Map
@@ -16,7 +17,6 @@ import Effect.AVar (AVar)
 import Effect.Aff.AVar as Ref
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
-import Effect.Now (nowDate)
 import Server.Core.Domain.User (Email, User, UserId(..), AuthorId)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 import Yoga.Om (Om, fromAff, note)
@@ -35,7 +35,7 @@ createUser :: AVar MemStore -> UserCreateInput -> Om {} (userRepoErr :: String) 
 createUser storeRef { username, email, password } = do
   store@{ byId, usernameToId, emailToId } <- fromAff $ Ref.take storeRef
   userId <- liftEffect $ UUID.genUUID <#> (\uuid -> UserId uuid)
-  createdNow <- liftEffect $ nowDate
+  createdNow <- liftEffect $ now
 
   let
     user =
