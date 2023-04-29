@@ -10,16 +10,16 @@ import HTTPurple (RequestR, forbidden', internalServerError', jsonHeaders, looku
 import HTTPurple.Middleware (Middleware)
 import Prim.Row (class Nub, class Union)
 import Record (merge)
-import Server.Core.Domain.User (User)
 import Server.Infra.Yoga.JWT (Jwt(..), Secret, decodeJwt)
-import Yoga.JSON (writeJSON)
+import Yoga.JSON (class ReadForeign, writeJSON)
 import Yoga.Om (fromAff, runOm)
 
 -- | Authenticate a user using JWT
 mkAuthenticateUserMiddleware
-  :: forall route extIn extOut
-   . Nub (RequestR route extOut) (RequestR route extOut)
-  => Union extIn (user :: Maybe User) extOut
+  :: forall user route extIn extOut
+   . ReadForeign user
+  => Nub (RequestR route extOut) (RequestR route extOut)
+  => Union extIn (user :: Maybe user) extOut
   => Secret
   -> Middleware route extIn extOut
 mkAuthenticateUserMiddleware secret router request@{ headers } = runOm
@@ -35,7 +35,7 @@ mkAuthenticateUserMiddleware secret router request@{ headers } = runOm
     case lookup headers "Authorization" of
       Nothing -> do
         liftEffect $ log "No Authorization header"
-        fromAff $ router $ merge request { user: (Nothing :: Maybe User) }
+        fromAff $ router $ merge request { user: Nothing :: Maybe user }
       Just jwt -> do
-        (user :: User) <- decodeJwt secret (Jwt jwt)
-        fromAff $ router $ merge request { user: (Just user) }
+        (user :: user) <- decodeJwt secret (Jwt jwt)
+        fromAff $ router $ merge request { user: (Just user) :: Maybe user }

@@ -1,5 +1,6 @@
 module Server.App.Api
   ( ApiRoute
+  , ApiRouterExt
   , ApiRootRoute(..)
   , apiRoute
   , apiRouter
@@ -34,7 +35,9 @@ apiRootRouter :: forall ext. OmRouter ApiRootRoute ext
 apiRootRouter { route: Hello, method: Get } = fromAff $ ok "Hello Api"
 apiRootRouter { route: Hello } = fromAff $ notFound
 
-apiRouter :: forall ext. Om {} () (OmRouter ApiRoute (UserRouterExt ext))
+type ApiRouterExt ext = UserRouterExt ext
+
+apiRouter :: forall ext. Om {} () (OmRouter ApiRoute (ApiRouterExt ext))
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
   userService <- mkUserService userRepo
