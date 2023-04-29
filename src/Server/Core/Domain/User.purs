@@ -8,14 +8,22 @@ module Server.Core.Domain.User
 
 import Prelude
 
+import Conduit.Control.Monad.Except (maybeThrow)
 import Conduit.Data.Username (Username)
-import Data.List (List)
 import Data.JSDate (JSDate)
+import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe)
-import Data.UUID (UUID)
-
+import Data.UUID (UUID, parseUUID)
+import Foreign (ForeignError(..))
+import Yoga.JSON (class ReadForeign, readImpl)
 
 newtype UserId = UserId UUID
+
+instance ReadForeign UserId where
+  readImpl raw = do
+    str <- readImpl raw
+    uuid <- maybeThrow (singleton $ ForeignError "Invalid UUId") $ parseUUID str
+    pure $ UserId uuid
 
 type AuthorId = UserId
 
@@ -32,7 +40,7 @@ type User =
   , username :: Username
   , email :: Email
   , password :: String
-  , following :: List AuthorId
+  , following :: Array AuthorId
   , bio :: Maybe String
   , image :: Maybe String
   , createdAt :: JSDate

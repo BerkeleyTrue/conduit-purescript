@@ -6,9 +6,9 @@ import Prelude
 
 import Conduit.Data.Username (Username)
 import Control.Monad.Except (catchError, throwError)
+import Data.Array (filter, nub, snoc)
 import Data.Foldable (foldl)
 import Data.JSDate (now)
-import Data.List (List(..), nub, filter)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -43,7 +43,7 @@ createUser storeRef { username, email, password } = do
       , username
       , email
       , password
-      , following: Nil
+      , following: []
       , createdAt: createdNow
       , updatedAt: Nothing
       , bio: Nothing
@@ -94,7 +94,7 @@ followUser :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: Strin
 followUser storeRef userId authorId =
   updateUserById storeRef userId updateFn
   where
-  updateFn = \user@{ following } -> user { following = nub $ Cons authorId following }
+  updateFn = \user@{ following } -> user { following = nub $ snoc following authorId }
 
 unfollowUser :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: String) User
 unfollowUser storeRef userId authorId =
