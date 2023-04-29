@@ -12,7 +12,7 @@ import Effect.Exception (message)
 import HTTPurple (RouteDuplex', internalServerError, response, serve)
 import HTTPurple.Status as Status
 import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
-import Server.Infra.HttPurple.Server (ExceptionHandler, omToRouter)
+import Server.Infra.HttPurple.Server (ExceptionHandler, omEnhanceRouter)
 import Server.Infra.HttPurple.Types (Router, OmRouter)
 import Server.Infra.Node.GracefullShutdown (gracefullShutdown)
 import Yoga.Om (Om, ask)
@@ -33,7 +33,7 @@ omServer route router maybeOnError = do
 
   let
     onError = fromMaybe defaultOnError maybeOnError
-    enhanceRouter = developmentLogFormat <<< omToRouter onError
+    enhanceRouter = developmentLogFormat <<< omEnhanceRouter onError
     onStarted = log $ "Server started on port " <> show port
     opts = { port, onStarted, notFoundHandler: Just notFoundHandler }
     settings = { route, router: enhanceRouter router }

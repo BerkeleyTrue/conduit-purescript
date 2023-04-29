@@ -1,6 +1,6 @@
 module Server.Infra.HttPurple.Server
   ( ExceptionHandler
-  , omToRouter
+  , omEnhanceRouter
   ) where
 
 import Prelude
@@ -13,5 +13,5 @@ import Yoga.Om (runOm)
 type ExceptionHandler = Error -> ResponseM
 
 -- | Convert a Router that response in Om to a Router that response in Aff
-omToRouter :: forall route. ExceptionHandler -> (OmRouter route) -> (Router route)
-omToRouter handler router = runOm {} { exception: handler } <<< router
+omEnhanceRouter :: forall route. ExceptionHandler -> (OmRouter route) -> (Router route)
+omEnhanceRouter handler router = runOm {} { exception: handler } <<< router
