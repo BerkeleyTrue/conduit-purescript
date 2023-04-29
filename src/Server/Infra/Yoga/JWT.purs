@@ -4,10 +4,8 @@ module Server.Infra.Yoga.JWT
   , Jwt(..)
   , Algorithm(..)
   , JwtError(..)
-  , fromString
-  , toString
-  , decode
-  , encode
+  , decodeJwt
+  , encodeJwt
   ) where
 
 import Prelude
@@ -64,17 +62,9 @@ instance showJwtError :: Show JwtError where
 
 derive instance eqJwtError :: Eq JwtError
 
--- | Convert a `String` to a `Jwt`.
-fromString :: String -> Jwt
-fromString = Jwt
-
--- | Convert a `Jwt` to a `String`.
-toString :: Jwt -> String
-toString (Jwt x) = x
-
 -- | Decode JWT with signature verification.
-decode :: forall payload. ReadForeign payload => Secret -> Jwt -> Om {} (jwtError :: JwtError) payload
-decode secret (Jwt jwt) =
+decodeJwt :: forall payload. ReadForeign payload => Secret -> Jwt -> Om {} (jwtError :: JwtError) payload
+decodeJwt secret (Jwt jwt) =
   case split (Pattern ".") jwt of
     [ headerSegment, payloadSegment, signatureSegment ] -> do
       alg <- readAlgorithm headerSegment
@@ -123,8 +113,8 @@ unescape x =
       >>> replace (unsafeRegex "_" global) "/"
 
 -- | Encode to JWT.
-encode :: forall payload. WriteForeign payload => Secret -> Algorithm -> payload -> Effect Jwt
-encode secret alg payload = do
+encodeJwt :: forall payload. WriteForeign payload => Secret -> Algorithm -> payload -> Effect Jwt
+encodeJwt secret alg payload = do
   headerSegment <- base64URLEncode $ writeJSON { typ: "JWT", alg: show alg }
   payloadSegment <- base64URLEncode $ writeJSON payload
   signatureSegment <- sign secret alg $ headerSegment <> "." <> payloadSegment
