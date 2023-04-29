@@ -52,7 +52,7 @@ articlesRoute = prefix "articles" $ sum
   , "Fav": Route.slug segment / "favorite"
   }
 
-articlesRouter :: OmRouter ArticlesRoute
+articlesRouter :: forall ext. OmRouter ArticlesRoute ext
 articlesRouter
   { route: List
       { limit

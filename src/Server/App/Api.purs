@@ -13,7 +13,7 @@ import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, sum, (/), (<+>
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, articlesRouter)
 import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, mkProfilesRouter)
-import Server.App.Drivers.User (UserRoute, mkUserRouter, userRoute)
+import Server.App.Drivers.User (UserRoute, UserRouterExt, mkUserRouter, userRoute)
 import Server.Core.Services.User (mkUserService)
 import Server.Infra.HttPurple.Routes ((</>))
 import Server.Infra.HttPurple.Types (OmRouter)
@@ -30,11 +30,11 @@ apiRoute = articlesRoute <+> profilesRoute <+> userRoute <+> sum
   { "Hello": "hello" / noArgs
   }
 
-apiRootRouter :: OmRouter ApiRootRoute
+apiRootRouter :: forall ext. OmRouter ApiRootRoute ext
 apiRootRouter { route: Hello, method: Get } = fromAff $ ok "Hello Api"
 apiRootRouter { route: Hello } = fromAff $ notFound
 
-apiRouter :: Om {} () (OmRouter ApiRoute)
+apiRouter :: forall ext. Om {} () (OmRouter ApiRoute (UserRouterExt ext))
 apiRouter = do
   userRepo <- mkMemoryUserRepo Map.empty
   userService <- mkUserService userRepo

@@ -3,13 +3,16 @@ module Server.App.Drivers.User
   , userRoute
   , mkUserRouter
   , UserRouterDeps
+  , UserRouterExt
   ) where
 
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe)
 import Foreign (MultipleErrors)
 import HTTPurple (Method(..), Response, RouteDuplex', badRequest', jsonHeaders, noArgs, notFound, ok, ok', sum, toString, (/))
+import Server.Core.Domain.User (User)
 import Server.Core.Ports.Ports (UserCreateInput)
 import Server.Core.Services.User (UserService(..), UserOutput)
 import Server.Infra.HttPurple.Types (OmRouter)
@@ -34,7 +37,9 @@ type UserRouterDeps =
   { userService :: UserService
   }
 
-mkUserRouter :: UserRouterDeps -> OmRouter UserRoute
+type UserRouterExt ext = (user :: Maybe User | ext)
+
+mkUserRouter :: forall ext. UserRouterDeps -> OmRouter UserRoute (UserRouterExt ext)
 -- | register a new user
 mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = handleErrors errorHandlers do
   str <- fromAff $ toString body

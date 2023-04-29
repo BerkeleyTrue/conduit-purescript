@@ -17,16 +17,15 @@ import Effect.Class (liftEffect)
 import Effect.Class as Effect.Class
 import Effect.Class.Console as Console
 import Effect.Now as Effect.Now
-import HTTPurple (Request, Response)
+import HTTPurple (ExtRequest, Response, Middleware)
 import HTTPurple as HTTP
-import Server.Infra.HttPurple.Types (Middleware')
 
 -- | The lifecycle functions around logging.
 -- |
 -- | Used to prepare metadata for the logs.
-type LogLifecycle route a =
-  { after :: Request route -> Response -> a -> Aff String
-  , before :: HTTP.Request route -> Aff a
+type LogLifecycle route a ext =
+  { after :: ExtRequest route ext -> Response -> a -> Aff String
+  , before :: ExtRequest route ext -> Aff a
   }
 
 -- | A helper that encapsulates the different information around request time.
@@ -61,7 +60,7 @@ colorStatus status = Ansi.Output.withGraphics graphics (show status)
     | otherwise = Ansi.Output.foreground Ansi.Codes.Red
 
 -- | Logs the request given the lifecycle functions.
-log :: forall a route. LogLifecycle route a -> Middleware' route
+log :: forall a route ext. LogLifecycle route a ext -> Middleware route ext ext
 log config router request =
   Effect.Aff.generalBracket
     (config.before request)
@@ -78,11 +77,11 @@ log config router request =
     \_ -> router request
 
 -- | Helper for logging when all you need is the time metadata.
-logWithTime :: forall route. (LogTime -> Request route -> Response -> Aff String) -> Middleware' route
+logWithTime :: forall route ext. (LogTime -> ExtRequest route ext -> Response -> Aff String) -> Middleware route ext ext
 logWithTime format = log { after, before }
   where
   after
-    :: Request route
+    :: ExtRequest route ext
     -> Response
     -> Data.DateTime.DateTime
     -> Aff String
@@ -91,7 +90,7 @@ logWithTime format = log { after, before }
     let duration = Data.DateTime.diff stop start
     format { duration, start, stop } request response
 
-  before :: Request route -> Aff Data.DateTime.DateTime
+  before :: ExtRequest route ext -> Aff Data.DateTime.DateTime
   before _ = Effect.Class.liftEffect Effect.Now.nowDateTime
 
 renderDateTime :: Data.DateTime.DateTime -> String
@@ -132,13 +131,13 @@ renderMethod = case _ of
 
 -- | A middleware that logs request in an unstandardized development format.
 -- | The logs are more verbose, colorful, and a bit easier to read.
-developmentLogFormat :: forall route. Middleware' route
+developmentLogFormat :: forall route ext. Middleware route ext ext
 developmentLogFormat = logWithTime developmentLogFormat'
 
 developmentLogFormat'
-  :: forall route
+  :: forall route ext
    . LogTime
-  -> Request route
+  -> ExtRequest route ext
   -> Response
   -> Aff String
 developmentLogFormat' logTime request response =

@@ -1,17 +1,16 @@
 module Server.Infra.HttPurple.Types
-  ( Router
-  , Middleware'
+  ( ExtRouter
+  , Router
   , OmResponse
   , OmRouter
   ) where
 
-import HTTPurple (Request, Response, ResponseM)
+import HTTPurple (Response, ResponseM, ExtRequest)
 import Yoga.Om (Om)
 
-type Router a = Request a -> ResponseM
-
-type Middleware' route = Router route -> Router route
+type Router route = ExtRequest route () -> ResponseM
+type ExtRouter route ext = ExtRequest route ext -> ResponseM
 
 type OmResponse = Om {} () Response
 
-type OmRouter a = Request a -> OmResponse
+type OmRouter route ext = ExtRequest route ext -> OmResponse

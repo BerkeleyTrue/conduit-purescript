@@ -19,6 +19,6 @@ metaRoute = mkRoute
   { "Ping": "ping" / noArgs
   }
 
-metaRouter :: OmRouter MetaRoute
+metaRouter :: forall ext. OmRouter MetaRoute ext
 metaRouter { route: Ping, method: Get } = ok "pong"
 metaRouter { route: Ping } = notFound

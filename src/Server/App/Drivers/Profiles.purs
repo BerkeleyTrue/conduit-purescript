@@ -32,7 +32,7 @@ type ProfilesRouterDeps =
   { userService :: UserService }
 
 -- TODO: get userId if authenticated
-mkProfilesRouter :: ProfilesRouterDeps -> OmRouter ProfilesRoute
+mkProfilesRouter :: forall ext. ProfilesRouterDeps -> OmRouter ProfilesRoute ext
 mkProfilesRouter { userService: (UserService { getProfile }) } { method: Get, route: Profile authorname } = handleErrors errorHandlers do
   user <- getProfile (Right authorname) Nothing
   ok $ "Get " <> (show authorname) <> "'s profile" <> show user

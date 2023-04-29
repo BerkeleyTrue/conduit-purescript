@@ -14,6 +14,6 @@ tagsRoute :: RouteDuplex' TagsRoute
 tagsRoute = prefix "tags" $ sum { "List": noArgs }
 
 
-tagsRouter :: OmRouter TagsRoute
+tagsRouter :: forall ext. OmRouter TagsRoute ext
 tagsRouter { route: List, method: Get } = ok "Get tags"
 tagsRouter { route: List } = notFound
