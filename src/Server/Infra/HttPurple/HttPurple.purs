@@ -5,30 +5,33 @@ module Server.Infra.HttPurple
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Effect (Effect)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
-import HTTPurple (RouteDuplex', response, serve)
-import HTTPurple.Status as Status
+import HTTPurple (RouteDuplex', serve)
 import Server.Infra.HttPurple.Types (Router)
 import Server.Infra.Node.GracefullShutdown (gracefullShutdown)
 import Yoga.Om (Om, ask)
-
-notFoundHandler :: Router Unit
-notFoundHandler = const $ response Status.notFound "Could not find the requested resource."
 
 type ServerCtx ctx =
   { port :: Int
   | ctx
   }
 
-omServer :: forall route ctx. RouteDuplex' route -> Router route -> Om (ServerCtx ctx) () Unit
-omServer route router = do
+type ServerOpts =
+  { notFoundHandler :: Router Unit
+  , onStarted :: Effect Unit
+  }
+
+omServer :: forall route ctx. ServerOpts -> RouteDuplex' route -> Router route -> Om (ServerCtx ctx) () Unit
+omServer opts route router = do
   { port } <- ask
 
   let
-    onStarted = log $ "Server started on port " <> show port
-    opts = { port, onStarted, notFoundHandler: Just notFoundHandler }
+    servOpts =
+      { port
+      , onStarted: opts.onStarted
+      , notFoundHandler: opts.notFoundHandler
+      }
     settings = { route, router }
 
-  liftEffect $ serve opts settings >>= gracefullShutdown
+  liftEffect $ serve servOpts settings >>= gracefullShutdown

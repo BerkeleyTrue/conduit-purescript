@@ -1,8 +1,11 @@
 module Server.Infra (omApp) where
 
-import Prelude hiding ((/))
+import Prelude
 
 import Data.Maybe (Maybe(..))
+import Effect.Class.Console (log)
+import HTTPurple (response)
+import HTTPurple.Status as Status
 import Server.App (route, router)
 import Server.Core.Domain.User (User)
 import Server.Infra.HttPurple (omServer)
@@ -15,13 +18,20 @@ import Yoga.Om (Om, ask)
 
 type AppCtx = { port :: Int, tokenSecret :: Secret }
 
+notFoundHandler :: Router Unit
+notFoundHandler = const $ response Status.notFound "Could not find the requested resource."
+
 omApp :: Om AppCtx () Unit
 omApp = do
-  { tokenSecret } <- ask
+  { tokenSecret, port } <- ask
   let
+    onStarted = log $ "Server started on port " <> show port
+
     authUserMiddleware = mkAuthenticateUserMiddleware tokenSecret
+
     enhanceRouter :: forall route. (OmRouter route (user :: Maybe User)) -> Router route
     enhanceRouter = authUserMiddleware <<< developmentLogFormat <<< omEnhanceRouter Nothing
+    opts = { onStarted, notFoundHandler }
 
   router' <- router <#> enhanceRouter
-  omServer route router'
+  omServer opts route router'
