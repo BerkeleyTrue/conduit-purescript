@@ -41,12 +41,10 @@ type UserRouterExt ext = (user :: Maybe User | ext)
 type ErrorHandler error = error -> Om {} (userRepoErr :: String) Response
 
 defaultErrorHandlers
-  :: forall errs
-   . Show errs
-  => { userRepoErr :: ErrorHandler errs
-     , parsingError :: ErrorHandler errs
-     }
-defaultErrorHandlers =
+  :: forall ctx errOut
+   . Om ctx (userRepoErr :: String, parsingError :: MultipleErrors | errOut) Response
+  -> Om ctx errOut Response
+defaultErrorHandlers = handleErrors
   { userRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   , parsingError: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   }
@@ -56,7 +54,8 @@ userToResponse userOm = userOm >>= ok' jsonHeaders <<< writeJSON
 
 mkUserRouter :: forall ext. UserRouterDeps -> OmRouter UserRoute (UserRouterExt ext)
 -- | register a new user
-mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = handleErrors defaultErrorHandlers do
+-- Note: does not check if currently logged in.
+mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = defaultErrorHandlers do
   str <- fromAff $ toString body
   parsed <- expandErr $ parseUserFromJson str
   expandErr $ (userToResponse <<< register) parsed.user
@@ -68,7 +67,8 @@ mkUserRouter { userService: (UserService { register }) } { route: Register, meth
 mkUserRouter _ { route: Register } = notFound
 
 -- | login a user
-mkUserRouter { userService: (UserService { login }) } { route: Authen, method: Post, body } = handleErrors defaultErrorHandlers do
+-- NOTE: does not check if currently logged in.
+mkUserRouter { userService: (UserService { login }) } { route: Authen, method: Post, body } = defaultErrorHandlers do
   input <- fromAff $ toString body
   parsed <- expandErr $ parseinputFromJson input
   expandErr $ (userToResponse <<< login) parsed.user
@@ -80,6 +80,6 @@ mkUserRouter { userService: (UserService { login }) } { route: Authen, method: P
 mkUserRouter _ { route: Authen } = notFound
 
 -- | update the current user
-mkUserRouter _ { route: Authed, method: Put } = ok "Update user"
 mkUserRouter _ { route: Authed, method: Get } = ok "Find user"
+mkUserRouter _ { route: Authed, method: Put } = ok "Update user"
 mkUserRouter _ { route: Authed } = notFound
