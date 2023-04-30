@@ -82,6 +82,7 @@ formatUserToPublicProfile Nothing { username, bio, image } = { username, bio, im
 registerUser :: UserRepo -> UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
 registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
 
+-- | Login User
 loginUser :: UserRepo -> UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
 loginUser (UserRepo { getByEmail }) { username, email, password } = do
   { password: storedPassword, bio, image } <- getByEmail email
