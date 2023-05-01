@@ -9,12 +9,12 @@ module Server.App.Drivers.User
 import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest', jsonHeaders, noArgs, notFound, ok, ok', sum, toString, (/))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok, ok', sum, toString, (/))
 import Server.Core.Domain.User (User)
 import Server.Core.Ports.Ports (UserCreateInput)
-import Server.Core.Services.User (UserOutput, UserService(..), UserLoginInput)
+import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), formatUserOutput)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
@@ -79,7 +79,12 @@ mkUserRouter { userService: (UserService { login }) } { route: Authen, method: P
 
 mkUserRouter _ { route: Authen } = notFound
 
+-- NOTE: below required that user is authed
+mkUserRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
+  case user of
+    Just user' -> userToResponse $ pure $ formatUserOutput user'
+    Nothing -> forbidden
+
 -- | update the current user
-mkUserRouter _ { route: Authed, method: Get } = ok "Find user"
 mkUserRouter _ { route: Authed, method: Put } = ok "Update user"
 mkUserRouter _ { route: Authed } = notFound

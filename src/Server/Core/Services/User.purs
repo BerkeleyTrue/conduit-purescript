@@ -5,6 +5,8 @@ module Server.Core.Services.User
   , UserOutput
   , PublicProfile
   , mkUserService
+  , formatUserOutput
+  , formatUserToPublicProfile
   ) where
 
 import Prelude
