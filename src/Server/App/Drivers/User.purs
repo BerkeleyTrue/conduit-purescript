@@ -11,10 +11,10 @@ import Prelude hiding ((/))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok, ok', sum, toString, (/))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok', sum, toString, (/))
 import Server.Core.Domain.User (User)
 import Server.Core.Ports.Ports (UserCreateInput)
-import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), formatUserOutput)
+import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), UpdateUserInput, formatUserOutput)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
@@ -86,5 +86,15 @@ mkUserRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
     Nothing -> forbidden
 
 -- | update the current user
-mkUserRouter _ { route: Authed, method: Put } = ok "Update user"
+mkUserRouter { userService: (UserService { update })} { route: Authed, method: Put, user, body } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      input <- fromAff $ toString body
+      parsed <- expandErr $ parseInputFromJson input
+      (update user'.userId >>> expandErr >>> userToResponse) parsed.user
+  where
+  parseInputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UpdateUserInput }
+  parseInputFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
+
 mkUserRouter _ { route: Authed } = notFound
