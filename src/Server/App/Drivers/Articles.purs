@@ -6,24 +6,25 @@ module Server.App.Drivers.Articles
 
 import Prelude hiding ((/))
 
+import Conduit.Data.Limit (Limit(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
 import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
-import Server.Infra.Data.Route as Route
+import Server.Infra.Data.Route (limitR, slugR)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Slug (Slug)
 import Slug as Slug
 
 data ArticlesRoute
   = List -- Get
-      { limit :: Maybe Route.Limit
+      { limit :: Maybe Limit
       , offset :: Maybe Int
       , favorited :: Maybe String -- favorited by
       , author :: Maybe String -- written by
       , tag :: Maybe String
       }
   | Feed -- Get
-      { limit :: Maybe Int
+      { limit :: Maybe Limit
       , offset :: Maybe Int
       }
   | BySlug Slug -- get, put, delete
@@ -36,20 +37,20 @@ derive instance genericArticlesRoute :: Generic ArticlesRoute _
 articlesRoute :: RouteDuplex' ArticlesRoute
 articlesRoute = prefix "articles" $ sum
   { "List": params
-      { limit: optional <<< Route.limit
+      { limit: optional <<< limitR
       , offset: optional <<< int
       , favorited: optional <<< string
       , author: optional <<< string
       , tag: optional <<< string
       }
   , "Feed": "feed" ?
-      { limit: optional <<< int
+      { limit: optional <<< limitR
       , offset: optional <<< int
       }
-  , "BySlug": Route.slug segment
-  , "Comments": Route.slug segment / "comments"
-  , "Comment": Route.slug segment / "comment" / int segment
-  , "Fav": Route.slug segment / "favorite"
+  , "BySlug": slugR segment
+  , "Comments": slugR segment / "comments"
+  , "Comment": slugR segment / "comment" / int segment
+  , "Fav": slugR segment / "favorite"
   }
 
 articlesRouter :: forall ext. OmRouter ArticlesRoute ext
@@ -71,7 +72,7 @@ articlesRouter
   <> (if (tag' == "") then "" else "with the following tag " <> tag')
 
   where
-  Route.Limit limit' = fromMaybe (Route.Limit 20) limit -- rethrow if query is out of bounds?
+  limit' = fromMaybe (Limit 20) limit -- rethrow if query is out of bounds?
   offset' = fromMaybe 0 offset
   favorited' = fromMaybe "" favorited
   author' = fromMaybe "" author
@@ -87,7 +88,7 @@ articlesRouter { route: Feed { limit, offset }, method: Get } = ok
       <> " offset"
 
   where
-  limit' = fromMaybe 20 limit
+  limit' = fromMaybe (Limit 20) limit
   offset' = fromMaybe 0 offset
 articlesRouter { route: Feed _ } = notFound
 

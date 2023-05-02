@@ -4,6 +4,7 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
+import Conduit.Data.Limit (Limit(..))
 import Data.Foldable (foldl)
 import Data.List (List(..))
 import Data.List as List
@@ -22,7 +23,6 @@ import Effect.Now (nowDate)
 import Server.Core.Domain.Article (Article, ArticleId(..))
 import Server.Core.Domain.User (AuthorId)
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
-import Server.Infra.Data.Route (Limit(..))
 import Slug (Slug, generate)
 import Yoga.Om (Om, throw, note)
 
