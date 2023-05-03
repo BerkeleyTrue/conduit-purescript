@@ -59,7 +59,7 @@ newtype UserService = UserService
   , login :: UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
   , getUser :: UserId -> Om {} (userRepoErr :: String) UserOutput
   , getProfile :: (Either AuthorId Authorname) -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
-  , update :: UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
+  , update :: (Either UserId Username) -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
   , follow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
   , unfollow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
   }
@@ -107,9 +107,12 @@ getUserProfile (UserRepo { getByUsername, getById }) authorIdOrName userId = do
   pure $ formatUserToPublicProfile userId author
 
 -- TODO: add validation for password/email
-updateUser :: UserRepo -> UserId -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
-updateUser (UserRepo { update }) userId input = do
+updateUser :: UserRepo -> Either UserId Username -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
+updateUser (UserRepo { update, getByUsername }) eitherIdOrName input = do
   now <- liftEffect $ now
+  userId <- case eitherIdOrName of
+    Left userId -> pure userId
+    Right username -> getByUsername username >>= pure <<< _.userId
   update userId
     ( \user -> user
         { email = fromMaybe user.email input.email

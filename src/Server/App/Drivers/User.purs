@@ -8,13 +8,13 @@ module Server.App.Drivers.User
 
 import Prelude hiding ((/))
 
+import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Foreign (MultipleErrors)
 import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok', sum, toString, (/))
-import Server.Core.Domain.User (User)
 import Server.Core.Ports.Ports (UserCreateInput)
-import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), UpdateUserInput, formatUserOutput)
+import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), UpdateUserInput)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
@@ -37,7 +37,7 @@ type UserRouterDeps =
   { userService :: UserService
   }
 
-type UserRouterExt ext = (user :: Maybe User | ext)
+type UserRouterExt ext = (user :: Maybe UserOutput | ext)
 type ErrorHandler error = error -> Om {} (userRepoErr :: String) Response
 
 defaultErrorHandlers
@@ -82,17 +82,17 @@ mkUserRouter _ { route: Authen } = notFound
 -- NOTE: below required that user is authed
 mkUserRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
   case user of
-    Just user' -> userToResponse $ pure $ formatUserOutput user'
+    Just user' -> userToResponse $ pure $ user'
     Nothing -> forbidden
 
 -- | update the current user
 mkUserRouter { userService: (UserService { update })} { route: Authed, method: Put, user, body } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
-    Just user' -> do
+    Just userOutput -> do
       input <- fromAff $ toString body
       parsed <- expandErr $ parseInputFromJson input
-      (update user'.userId >>> expandErr >>> userToResponse) parsed.user
+      (update (Right userOutput.username) >>> expandErr >>> userToResponse) parsed.user
   where
   parseInputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UpdateUserInput }
   parseInputFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON

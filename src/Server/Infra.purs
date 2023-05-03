@@ -2,19 +2,22 @@ module Server.Infra (omApp) where
 
 import Prelude
 
+import Data.Map as Map
 import Data.Maybe (Maybe(..))
 import Effect.Class.Console (log)
-import HTTPurple (response)
+import HTTPurple (Middleware, response)
 import HTTPurple.Status as Status
 import Server.App (route, router)
-import Server.Core.Domain.User (User)
+import Server.App.Api (JWTPayload)
+import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
+import Server.Core.Services.User (UserOutput, mkUserService)
 import Server.Infra.HttPurple (omServer)
-import Server.Infra.HttPurple.Middleware.Jwt (mkAuthenticateUserMiddleware)
+import Server.Infra.HttPurple.Middleware.Jwt (mkAuthenticateJwtMiddleware)
 import Server.Infra.HttPurple.Middleware.Logger (developmentLogFormat)
 import Server.Infra.HttPurple.Server (omEnhanceRouter)
 import Server.Infra.HttPurple.Types (OmRouter, Router)
 import Server.Infra.Yoga.JWT (Secret)
-import Yoga.Om (Om, ask)
+import Yoga.Om (Om, ask, expandCtx, widenCtx)
 
 type AppCtx = { port :: Int, tokenSecret :: Secret }
 
@@ -24,14 +27,17 @@ notFoundHandler = const $ response Status.notFound "Could not find the requested
 omApp :: Om AppCtx () Unit
 omApp = do
   { tokenSecret, port } <- ask
+  userRepo <- expandCtx $ mkMemoryUserRepo Map.empty
+  userService <- expandCtx $ mkUserService userRepo
   let
     onStarted = log $ "Server started on port " <> show port
 
-    authUserMiddleware = mkAuthenticateUserMiddleware tokenSecret
+    authUserMiddleware :: forall route. Middleware route () (authed :: Maybe JWTPayload, user:: Maybe UserOutput)
+    authUserMiddleware = mkAuthenticateJwtMiddleware userService tokenSecret
 
-    enhanceRouter :: forall route. (OmRouter route (user :: Maybe User)) -> Router route
-    enhanceRouter = authUserMiddleware <<< developmentLogFormat <<< omEnhanceRouter Nothing
+    enhanceRouter :: forall route. (OmRouter route (authed :: Maybe JWTPayload, user :: Maybe UserOutput)) -> Router route
+    enhanceRouter = developmentLogFormat <<< authUserMiddleware <<< omEnhanceRouter Nothing
     opts = { onStarted, notFoundHandler }
 
-  router' <- router <#> enhanceRouter
+  router' <- widenCtx { userService } router <#> enhanceRouter
   omServer opts route router'
