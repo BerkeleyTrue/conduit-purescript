@@ -1,28 +1,51 @@
 module Server.App.Drivers.Articles
   ( ArticlesRoute(..)
   , articlesRoute
-  , articlesRouter
+  , mkArticlesRouter
   ) where
 
 import Prelude hiding ((/))
 
 import Conduit.Data.Limit (Limit(..))
 import Conduit.Data.Offset (Offset(..))
-import Conduit.Data.UserId (AuthorId, UserId(..))
-import Conduit.Data.Username (Username(..))
+import Conduit.Data.UserId (AuthorId)
+import Conduit.Data.Username (Username)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
-import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
-import Server.Infra.Data.Route (limitR, offsetR, slugR)
+import HTTPurple
+  ( Method(..)
+  , Response
+  , RouteDuplex'
+  , badRequest'
+  , int
+  , jsonHeaders
+  , notFound
+  , ok
+  , ok'
+  , optional
+  , params
+  , prefix
+  , segment
+  , string
+  , sum
+  , (/)
+  , (?)
+  )
+import Justifill (justifill)
+import Server.Core.Services.Articles (ArticleService(..))
+import Server.Core.Services.User (UserOutput)
+import Server.Infra.Data.Route (limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Slug (Slug)
 import Slug as Slug
+import Yoga.JSON (writeJSON)
+import Yoga.Om (Om, handleErrors)
 
 data ArticlesRoute
   = List -- Get
       { limit :: Maybe Limit
       , offset :: Maybe Offset
-      , favorited :: Maybe String -- favorited by
+      , favorited :: Maybe AuthorId -- favorited by
       , author :: Maybe AuthorId -- written by
       , tag :: Maybe String
       }
@@ -56,34 +79,37 @@ articlesRoute = prefix "articles" $ sum
   , "Fav": slugR segment / "favorite"
   }
 
-articlesRouter :: forall ext. OmRouter ArticlesRoute ext
-articlesRouter
-  { route: List
-      { limit
-      , offset
-      , favorited
-      , author
-      , tag
-      }
-  , method: Get
-  } = ok $ "get " <> show limit'
-  <> " articles after "
-  <> show offset'
-  <> " steps"
-  <> (if (favorited' == "") then "" else "favorited by " <> favorited')
-  <> (if (author' == "") then "" else "written by " <> author')
-  <> (if (tag' == "") then "" else "with the following tag " <> tag')
+type ArticlesRouterExts ext = (user :: Maybe UserOutput | ext)
+
+defaultErrorHandlers
+  :: forall ctx errOut
+   . Om ctx (articleRepoErr :: String | errOut) Response
+  -> Om ctx errOut Response
+defaultErrorHandlers = handleErrors
+  { articleRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
+  }
+
+mkArticlesRouter :: forall ext. { articleService :: ArticleService } -> OmRouter ArticlesRoute (ArticlesRouterExts ext)
+mkArticlesRouter { articleService: (ArticleService { list }) } { route: List { limit, offset, favorited, author, tag }, method: Get, user } = defaultErrorHandlers do
+  let (username :: Maybe Username) = user <#> _.username
+  output <- list { username, input }
+  ok' jsonHeaders $ writeJSON output
 
   where
-  limit' = fromMaybe (Limit 20) limit -- rethrow if query is out of bounds?
+  limit' = fromMaybe (Limit 20) limit
+  author' = author
   offset' = fromMaybe (Offset 0) offset
-  favorited' = fromMaybe "" favorited
-  author' = fromMaybe "" author
-  tag' = fromMaybe "" tag
+  input = justifill
+    { limit: limit'
+    , author: author'
+    , offset: offset'
+    , favorited
+    , tag
+    }
 
-articlesRouter { route: List _ } = notFound
+mkArticlesRouter _ { route: List _ } = notFound
 
-articlesRouter { route: Feed { limit, offset }, method: Get } = ok
+mkArticlesRouter _ { route: Feed { limit, offset }, method: Get } = ok
   $ "feed me "
       <> show limit'
       <> " articles offset by "
@@ -94,20 +120,20 @@ articlesRouter { route: Feed { limit, offset }, method: Get } = ok
   limit' = fromMaybe (Limit 20) limit
   offset' = fromMaybe (Offset 0) offset
 
-articlesRouter { route: Feed _ } = notFound
+mkArticlesRouter _ { route: Feed _ } = notFound
 
-articlesRouter { route: BySlug slug, method: Get } = ok $ "Get by Slug: " <> Slug.toString slug
-articlesRouter { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> Slug.toString slug
-articlesRouter { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> Slug.toString slug
-articlesRouter { route: BySlug _ } = notFound
+mkArticlesRouter _ { route: BySlug slug, method: Get } = ok $ "Get by Slug: " <> Slug.toString slug
+mkArticlesRouter _ { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> Slug.toString slug
+mkArticlesRouter _ { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> Slug.toString slug
+mkArticlesRouter _ { route: BySlug _ } = notFound
 
-articlesRouter { route: Comments slug, method: Get } = ok $ "get comments for" <> Slug.toString slug
-articlesRouter { route: Comments slug, method: Post } = ok $ "post comments for" <> Slug.toString slug
-articlesRouter { route: Comments _ } = notFound
+mkArticlesRouter _ { route: Comments slug, method: Get } = ok $ "get comments for" <> Slug.toString slug
+mkArticlesRouter _ { route: Comments slug, method: Post } = ok $ "post comments for" <> Slug.toString slug
+mkArticlesRouter _ { route: Comments _ } = notFound
 
-articlesRouter { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> Slug.toString slug
-articlesRouter { route: Comment _ _ } = notFound
+mkArticlesRouter _ { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> Slug.toString slug
+mkArticlesRouter _ { route: Comment _ _ } = notFound
 
-articlesRouter { route: Fav slug, method: Get } = ok $ "fav an article " <> Slug.toString slug
-articlesRouter { route: Fav slug, method: Delete } = ok $ "unfav an article " <> Slug.toString slug
-articlesRouter { route: Fav _ } = notFound
+mkArticlesRouter _ { route: Fav slug, method: Get } = ok $ "fav an article " <> Slug.toString slug
+mkArticlesRouter _ { route: Fav slug, method: Delete } = ok $ "unfav an article " <> Slug.toString slug
+mkArticlesRouter _ { route: Fav _ } = notFound

@@ -37,6 +37,7 @@
               dotenv
               yoga-om
               js-date
+              justifill
 
               # client
               halogen

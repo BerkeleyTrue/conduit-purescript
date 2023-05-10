@@ -9,7 +9,9 @@ import HTTPurple (Middleware, response)
 import HTTPurple.Status as Status
 import Server.App (route, router)
 import Server.App.Api (JWTPayload)
+import Server.App.Driven.ArticleRepo.MemStore (mkMemoryArticleRepo)
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
+import Server.Core.Services.Articles (mkArticleService)
 import Server.Core.Services.User (UserOutput, mkUserService)
 import Server.Infra.HttPurple (omServer)
 import Server.Infra.HttPurple.Middleware.Jwt (mkAuthenticateJwtMiddleware)
@@ -27,8 +29,8 @@ notFoundHandler = const $ response Status.notFound "Could not find the requested
 omApp :: Om AppCtx () Unit
 omApp = do
   { tokenSecret, port } <- ask
-  userRepo <- expandCtx $ mkMemoryUserRepo Map.empty
-  userService <- expandCtx $ mkUserService userRepo
+  userService <- expandCtx $ mkMemoryUserRepo Map.empty >>= mkUserService
+  articleService <- expandCtx $ mkMemoryArticleRepo Map.empty >>= flip mkArticleService userService
   let
     onStarted = log $ "Server started on port " <> show port
 
@@ -39,5 +41,5 @@ omApp = do
     enhanceRouter = developmentLogFormat <<< authUserMiddleware <<< omEnhanceRouter Nothing
     opts = { onStarted, notFoundHandler }
 
-  router' <- widenCtx { userService } router <#> enhanceRouter
+  router' <- widenCtx { userService, articleService } router <#> enhanceRouter
   omServer opts route router'
