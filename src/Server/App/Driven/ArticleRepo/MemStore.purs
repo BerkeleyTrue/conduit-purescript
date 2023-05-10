@@ -5,9 +5,11 @@ module Server.App.Driven.ArticleRepo.MemStore
 import Prelude
 
 import Conduit.Data.Limit (Limit(..))
+import Conduit.Data.Offset (Offset(..))
 import Conduit.Data.UserId (AuthorId)
 import Data.Array (drop, elem, filter, singleton, take)
 import Data.Foldable (foldl)
+import Data.JSDate (now)
 import Data.List (toUnfoldable)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -20,7 +22,6 @@ import Effect.Aff (Aff)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Effect.Now (nowDate)
 import Server.Core.Domain.Article (Article, ArticleId(..))
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
 import Slug (Slug, generate)
@@ -50,7 +51,7 @@ createArticle storeRef { title, description, body, tagList, authorId } = do
     Nothing -> throw { articleRepoErr: "Expected a slug-able title but could not generate from " <> title }
 
   articleId <- liftEffect $ ArticleId <$> genUUID
-  now <- liftEffect $ nowDate
+  now <- liftEffect $ now
 
   let
     article =
@@ -112,8 +113,8 @@ listArticles storeRef input@{ limit, offset } =
           ([])
       $ filter (queryBuilder input)
       $ map (\article -> Tuple article $ fromMaybe [] $ Map.lookup article.articleId favoritedBy)
-      $ take (unwrap (fromMaybe (Limit 20) limit))
-      $ drop (fromMaybe 0 offset)
+      $ take (fromMaybe 20 $ limit <#> unwrap)
+      $ drop (fromMaybe 0 $ offset <#> unwrap)
       $ toUnfoldable
       $ Map.values byId
 

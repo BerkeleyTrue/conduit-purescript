@@ -6,6 +6,7 @@ import Conduit.Control.Monad.Except (maybeThrow)
 import Control.Monad.Except (runExceptT)
 import Data.Array (filter, mapMaybe, singleton)
 import Data.Either (Either)
+import Data.JSDate (now)
 import Data.List (toUnfoldable)
 import Data.Map (Map)
 import Data.Map as Map
@@ -16,7 +17,6 @@ import Effect.Aff (Aff)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Effect.Now (nowDate)
 import Server.Core.Domain.Article (ArticleId)
 import Server.Core.Domain.Comment (Comment(..), CommentId(..))
 import Server.Core.Ports.Ports (CommentCreateInput, CommentRepo(..))
@@ -33,7 +33,7 @@ createComment :: AVar MemStore -> CommentCreateInput -> Aff (Either String Comme
 createComment storeRef { body, authorId, articleId } = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   commentId <- liftEffect $ CommentId <$> genUUID
-  now <- liftEffect $ nowDate
+  now <- liftEffect $ now
 
   let
     (newComment :: Comment) =

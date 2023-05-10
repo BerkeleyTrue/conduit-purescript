@@ -2,8 +2,8 @@ module Server.Core.Domain.Article where
 
 import Conduit.Data.UserId (AuthorId)
 import Data.Bounded (class Ord)
-import Data.Date (Date)
 import Data.Eq (class Eq)
+import Data.JSDate (JSDate)
 import Data.Maybe (Maybe)
 import Data.Show (class Show, show)
 import Data.UUID (UUID)
@@ -28,6 +28,6 @@ type Article =
   , body :: String
   , tagList :: Array String
   , favoritesCount :: Int
-  , createdAt :: Date
-  , updatedAt :: Maybe Date
+  , createdAt :: JSDate
+  , updatedAt :: Maybe JSDate
   }

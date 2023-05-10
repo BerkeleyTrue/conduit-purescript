@@ -9,8 +9,8 @@ import Prelude
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Array (catMaybes)
-import Data.Date (Date)
 import Data.Either (Either(..))
+import Data.JSDate (JSDate)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
@@ -26,8 +26,8 @@ type ArticleOutput =
   , description :: String
   , body :: String
   , tagList :: Array Tag
-  , createdAt :: Date
-  , updatedAt :: Maybe Date
+  , createdAt :: JSDate
+  , updatedAt :: Maybe JSDate
   , favorited :: Boolean
   , favoritesCount :: Int
   , author :: PublicProfile
