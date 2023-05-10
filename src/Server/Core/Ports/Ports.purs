@@ -3,6 +3,7 @@ module Server.Core.Ports.Ports where
 import Prelude
 
 import Conduit.Data.Limit (Limit)
+import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
@@ -52,7 +53,7 @@ type ArticleListInput =
 newtype ArticleRepo = ArticleRepo
   { create :: ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
   , getById :: ArticleId -> Om {} (articleRepoErr :: String) Article
-  , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
+  , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
   , list :: ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
   , update :: ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
   , delete :: ArticleId -> Om {} (articleRepoErr :: String) Unit

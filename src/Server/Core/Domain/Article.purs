@@ -1,5 +1,6 @@
 module Server.Core.Domain.Article where
 
+import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.UserId (AuthorId)
 import Data.Bounded (class Ord)
 import Data.Eq (class Eq)
@@ -7,7 +8,6 @@ import Data.JSDate (JSDate)
 import Data.Maybe (Maybe)
 import Data.Show (class Show, show)
 import Data.UUID (UUID)
-import Slug (Slug)
 
 newtype ArticleId = ArticleId UUID
 
@@ -21,7 +21,7 @@ type Tag = String
 
 type Article =
   { articleId :: ArticleId
-  , slug :: Slug
+  , slug :: MySlug
   , title :: String
   , description :: String
   , authorId :: AuthorId

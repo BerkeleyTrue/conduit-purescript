@@ -6,6 +6,7 @@ module Server.Core.Services.Articles
 
 import Prelude
 
+import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Array (catMaybes)
@@ -17,11 +18,10 @@ import Data.Traversable (traverse)
 import Server.Core.Domain.Article (Article, Tag)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
-import Slug (Slug)
 import Yoga.Om (Om, expandCtx, expandErr, handleErrors)
 
 type ArticleOutput =
-  { slug :: Slug
+  { slug :: MySlug
   , title :: String
   , description :: String
   , body :: String
@@ -35,7 +35,7 @@ type ArticleOutput =
 
 newtype ArticleService = ArticleService
   { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
-  , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
+  , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
   }
 
 derive instance newtypeArticleService :: Newtype ArticleService _
@@ -71,8 +71,8 @@ listArticles (ArticleRepo { list }) userService { username, input } = do
       , author: profile
       }
 
-mkArticleService :: ArticleRepo -> UserService -> ArticleService
-mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService =
+mkArticleService :: ArticleRepo -> UserService -> Om {} () ArticleService
+mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService = pure $
   ArticleService
     { getBySlug: getBySlug
     , list: listArticles articlesRepo userService

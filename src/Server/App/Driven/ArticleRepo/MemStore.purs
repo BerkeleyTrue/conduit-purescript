@@ -1,11 +1,10 @@
 module Server.App.Driven.ArticleRepo.MemStore
-  ( mkMemoryArticleStore
+  ( mkMemoryArticleRepo
   ) where
 
 import Prelude
 
-import Conduit.Data.Limit (Limit(..))
-import Conduit.Data.Offset (Offset(..))
+import Conduit.Data.MySlug (MySlug, generate)
 import Conduit.Data.UserId (AuthorId)
 import Data.Array (drop, elem, filter, singleton, take)
 import Data.Foldable (foldl)
@@ -18,17 +17,15 @@ import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
 import Data.UUID (genUUID)
 import Effect.AVar (AVar)
-import Effect.Aff (Aff)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Server.Core.Domain.Article (Article, ArticleId(..))
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
-import Slug (Slug, generate)
-import Yoga.Om (Om, throw, note)
+import Yoga.Om (Om, fromAff, note, throw)
 
 type ArticleMap = Map.Map ArticleId Article
-type SlugToArticle = Map.Map Slug ArticleId
+type SlugToArticle = Map.Map MySlug ArticleId
 type FavoritedBy = Map.Map ArticleId (Array AuthorId)
 
 type MemStore =
@@ -80,7 +77,7 @@ getArticleById storeRef articleId = do
   { byId } <- liftAff $ Avar.take storeRef
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
-getArticleBySlug :: AVar MemStore -> Slug -> Om {} (articleRepoErr :: String) Article
+getArticleBySlug :: AVar MemStore -> MySlug -> Om {} (articleRepoErr :: String) Article
 getArticleBySlug storeRef slug = do
   { slugToId, byId } <- liftAff $ Avar.take storeRef
   articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
@@ -142,10 +139,10 @@ deleteArticle storeRef articleId = do
         }
         storeRef
 
-mkMemoryArticleStore :: ArticleMap -> Aff ArticleRepo
-mkMemoryArticleStore initialState = do
+mkMemoryArticleRepo :: ArticleMap -> Om {} () ArticleRepo
+mkMemoryArticleRepo initialState = do
   let slugToId = foldl (\acc { articleId, slug } -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
-  storeRef <- Avar.new { byId: initialState, slugToId, favoritedBy: Map.empty }
+  storeRef <- fromAff $ Avar.new { byId: initialState, slugToId, favoritedBy: Map.empty }
   pure $
     ArticleRepo
       { create: createArticle storeRef
