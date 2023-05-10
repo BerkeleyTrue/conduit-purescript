@@ -6,6 +6,8 @@ module Server.Core.Services.Articles
 
 import Prelude
 
+import Conduit.Data.UserId (AuthorId)
+import Conduit.Data.Username (Username)
 import Data.Date (Date)
 import Data.Either (Either(..))
 import Data.List (List, catMaybes)
@@ -13,7 +15,6 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Server.Core.Domain.Article (Article, Tag)
-import Server.Core.Domain.User (UserId, AuthorId)
 import Server.Core.Ports.Ports (ArticleListInput, ArticleRepo(..))
 import Server.Core.Services.User (PublicProfile, UserService)
 import Slug (Slug)

@@ -2,6 +2,7 @@ module Server.Infra.HttPurple.Middleware.ParseUser where
 
 import Prelude
 
+import Conduit.Data.UserId (UserId)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (message)
 import Effect.Class (liftEffect)
@@ -9,18 +10,10 @@ import Effect.Console (error)
 import HTTPurple (ResponseM, forbidden', internalServerError', jsonHeaders)
 import Prim.Row (class Nub, class Union)
 import Record (merge)
-import Server.Core.Domain.User (UserId)
 import Server.Core.Services.User (UserService(..), UserOutput)
 import Yoga.JSON (writeJSON)
 import Yoga.Om (fromAff, runOm)
 
--- mkParseUserMiddleware
---   :: forall route extIn extOut extWOAuth
---    . Row.Cons "authed" (Maybe { userId :: UserId }) extWOAuth extIn
---   => Nub (RequestR route extOut) (RequestR route extOut)
---   => Union extIn (user :: Maybe UserOutput) extOut
---   => UserService
---   -> Middleware route extIn extOut
 mkParseUserMiddleware
   :: forall requestOut requestIn authExt t102 t103
    . Union requestOut (user :: Maybe UserOutput) t102

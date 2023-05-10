@@ -4,6 +4,7 @@ module Server.App.Driven.UserRepo.MemStore
 
 import Prelude
 
+import Conduit.Data.UserId (UserId(..), AuthorId)
 import Conduit.Data.Username (Username)
 import Control.Monad.Except (catchError, throwError)
 import Data.Array (filter, nub, snoc)
@@ -17,7 +18,7 @@ import Effect.AVar (AVar)
 import Effect.Aff.AVar as Ref
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
-import Server.Core.Domain.User (Email, User, UserId(..), AuthorId)
+import Server.Core.Domain.User (Email, User)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 import Yoga.Om (Om, fromAff, note)
 

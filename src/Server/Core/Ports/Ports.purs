@@ -3,6 +3,8 @@ module Server.Core.Ports.Ports where
 import Prelude
 
 import Conduit.Data.Limit (Limit)
+import Conduit.Data.Offset (Offset)
+import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Either (Either)
 import Data.List (List)
@@ -10,7 +12,7 @@ import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Server.Core.Domain.Article (Article, ArticleId, Tag)
 import Server.Core.Domain.Comment (CommentId, Comment)
-import Server.Core.Domain.User (Email, User, UserId, AuthorId)
+import Server.Core.Domain.User (Email, User)
 import Slug (Slug)
 import Yoga.Om (Om)
 
@@ -45,7 +47,7 @@ type ArticleListInput =
   , author :: Maybe AuthorId
   , favorited :: Maybe AuthorId
   , limit :: Maybe Limit
-  , offset :: Maybe Int
+  , offset :: Maybe Offset
   }
 
 newtype ArticleRepo = ArticleRepo

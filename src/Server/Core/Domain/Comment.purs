@@ -1,13 +1,13 @@
 module Server.Core.Domain.Comment where
 
 import Data.Date (Date)
+import Conduit.Data.UserId (AuthorId)
 import Data.Eq (class Eq)
 import Data.Maybe (Maybe)
 import Data.Ord (class Ord)
 import Data.Show (class Show, show)
 import Data.UUID (UUID)
 import Server.Core.Domain.Article (ArticleId)
-import Server.Core.Domain.User (UserId)
 
 newtype CommentId = CommentId UUID
 
@@ -20,7 +20,7 @@ derive instance ordCommentId :: Ord CommentId
 data Comment = Comment
   { commentId :: CommentId
   , articleId :: ArticleId
-  , authorId :: UserId
+  , authorId :: AuthorId
   , body :: String
   , createdAt :: Date
   , updatedAt :: Maybe Date

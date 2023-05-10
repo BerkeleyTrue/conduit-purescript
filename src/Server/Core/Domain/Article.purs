@@ -1,13 +1,12 @@
 module Server.Core.Domain.Article where
 
+import Conduit.Data.UserId (AuthorId)
 import Data.Bounded (class Ord)
 import Data.Date (Date)
 import Data.Eq (class Eq)
-import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.Show (class Show, show)
 import Data.UUID (UUID)
-import Server.Core.Domain.User (UserId)
 import Slug (Slug)
 
 newtype ArticleId = ArticleId UUID
@@ -25,9 +24,9 @@ type Article =
   , slug :: Slug
   , title :: String
   , description :: String
-  , authorId :: UserId
+  , authorId :: AuthorId
   , body :: String
-  , tagList :: List String
+  , tagList :: Array String
   , favoritesCount :: Int
   , createdAt :: Date
   , updatedAt :: Maybe Date

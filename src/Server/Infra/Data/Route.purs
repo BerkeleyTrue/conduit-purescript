@@ -3,12 +3,14 @@ module Server.Infra.Data.Route
   , slugR
   , usernameR
   , offsetR
+  , userIdR
   ) where
 
 import Prelude
 
 import Conduit.Data.Limit (Limit, limitToString, stringToLimit)
 import Conduit.Data.Offset (Offset, offsetToString, stringToOffset)
+import Conduit.Data.UserId (UserId, mkUserId)
 import Conduit.Data.Username (Username, mkUsername)
 import Data.Bifunctor (lmap)
 import Data.Either (note)
@@ -27,3 +29,6 @@ offsetR = as offsetToString stringToOffset
 
 usernameR :: RouteDuplex' String -> RouteDuplex' Username
 usernameR = as show (lmap show <<< mkUsername)
+
+userIdR :: RouteDuplex' String -> RouteDuplex' UserId
+userIdR = as show (lmap show <<< mkUserId)

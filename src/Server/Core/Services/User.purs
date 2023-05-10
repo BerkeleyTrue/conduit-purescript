@@ -12,6 +12,7 @@ module Server.Core.Services.User
 import Prelude
 
 import Conduit.Data.Password (comparePasswords)
+import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username, Authorname)
 import Data.Either (Either(..))
 import Data.Foldable (any)
@@ -19,7 +20,7 @@ import Data.JSDate (now)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Effect.Class (liftEffect)
-import Server.Core.Domain.User (AuthorId, Email, User, UserId, Author)
+import Server.Core.Domain.User (Email, User, Author)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
 
@@ -58,7 +59,7 @@ newtype UserService = UserService
   { register :: UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
   , login :: UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
   , getUser :: UserId -> Om {} (userRepoErr :: String) UserOutput
-  , getProfile :: (Either AuthorId Authorname) -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
+  , getProfile :: (Either AuthorId Authorname) -> Maybe Username -> Om {} (userRepoErr :: String) PublicProfile
   , update :: (Either UserId Username) -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
   , follow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
   , unfollow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile

@@ -8,6 +8,8 @@ import Prelude hiding ((/))
 
 import Conduit.Data.Limit (Limit(..))
 import Conduit.Data.Offset (Offset(..))
+import Conduit.Data.UserId (AuthorId, UserId(..))
+import Conduit.Data.Username (Username(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
 import HTTPurple (Method(..), RouteDuplex', int, notFound, ok, optional, params, prefix, segment, string, sum, (/), (?))
@@ -21,7 +23,7 @@ data ArticlesRoute
       { limit :: Maybe Limit
       , offset :: Maybe Offset
       , favorited :: Maybe String -- favorited by
-      , author :: Maybe String -- written by
+      , author :: Maybe AuthorId -- written by
       , tag :: Maybe String
       }
   | Feed -- Get
@@ -40,8 +42,8 @@ articlesRoute = prefix "articles" $ sum
   { "List": params
       { limit: optional <<< limitR
       , offset: optional <<< offsetR
-      , favorited: optional <<< string
-      , author: optional <<< string
+      , favorited: optional <<< userIdR
+      , author: optional <<< userIdR
       , tag: optional <<< string
       }
   , "Feed": "feed" ?

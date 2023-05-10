@@ -5,6 +5,7 @@ module Server.App.Driven.ArticleRepo.MemStore
 import Prelude
 
 import Conduit.Data.Limit (Limit(..))
+import Conduit.Data.UserId (AuthorId)
 import Data.Foldable (foldl)
 import Data.List (List(..))
 import Data.List as List
@@ -21,7 +22,6 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Now (nowDate)
 import Server.Core.Domain.Article (Article, ArticleId(..))
-import Server.Core.Domain.User (AuthorId)
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
 import Slug (Slug, generate)
 import Yoga.Om (Om, throw, note)
