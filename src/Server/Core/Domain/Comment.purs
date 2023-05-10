@@ -1,8 +1,8 @@
 module Server.Core.Domain.Comment where
 
-import Data.Date (Date)
 import Conduit.Data.UserId (AuthorId)
 import Data.Eq (class Eq)
+import Data.JSDate (JSDate)
 import Data.Maybe (Maybe)
 import Data.Ord (class Ord)
 import Data.Show (class Show, show)
@@ -22,6 +22,6 @@ data Comment = Comment
   , articleId :: ArticleId
   , authorId :: AuthorId
   , body :: String
-  , createdAt :: Date
-  , updatedAt :: Maybe Date
+  , createdAt :: JSDate
+  , updatedAt :: Maybe JSDate
   }

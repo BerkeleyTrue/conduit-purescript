@@ -99,13 +99,20 @@ getUser (UserRepo { getById }) userId = do
   { email, username, bio, image } <- getById userId
   pure { email, username, bio, image, token: "token" }
 
-getUserProfile :: UserRepo -> (Either AuthorId Authorname) -> Maybe UserId -> Om {} (userRepoErr :: String) PublicProfile
-getUserProfile (UserRepo { getByUsername, getById }) authorIdOrName userId = do
+getUserProfile :: UserRepo -> (Either AuthorId Authorname) -> Maybe Username -> Om {} (userRepoErr :: String) PublicProfile
+getUserProfile userRepo authorIdOrName username = do
   author <- case authorIdOrName of
     Left authorId -> getById authorId
     Right authorname -> getByUsername authorname
 
+  userId <- case username of
+    Nothing -> pure Nothing
+    Just username' -> Just <$> getIdFromUsername userRepo username'
+
   pure $ formatUserToPublicProfile userId author
+  where
+  getByUsername = (unwrap userRepo).getByUsername
+  getById = (unwrap userRepo).getById
 
 -- TODO: add validation for password/email
 updateUser :: UserRepo -> Either UserId Username -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput

@@ -7,7 +7,6 @@ import Conduit.Data.Offset (Offset)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Either (Either)
-import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Server.Core.Domain.Article (Article, ArticleId, Tag)
@@ -38,7 +37,7 @@ type ArticleCreateInput =
   { title :: String
   , description :: String
   , body :: String
-  , tagList :: Maybe (List String)
+  , tagList :: Maybe (Array String)
   , authorId :: UserId
   }
 
@@ -54,7 +53,7 @@ newtype ArticleRepo = ArticleRepo
   { create :: ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
   , getById :: ArticleId -> Om {} (articleRepoErr :: String) Article
   , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
-  , list :: ArticleListInput -> Om {} (articleRepoErr :: String) (List Article)
+  , list :: ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
   , update :: ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
   , delete :: ArticleId -> Om {} (articleRepoErr :: String) Unit
   }
@@ -68,8 +67,8 @@ type CommentCreateInput =
 newtype CommentRepo m = CommentRepo
   { create :: CommentCreateInput -> m (Either String Comment)
   , getById :: CommentId -> m (Either String Comment)
-  , getByArticleId :: ArticleId -> m (Either String (List Comment))
-  , list :: m (List Comment)
+  , getByArticleId :: ArticleId -> m (Either String (Array Comment))
+  , list :: m (Array Comment)
   , update :: CommentId -> (Comment -> Comment) -> m (Either String Comment)
   , delete :: CommentId -> m (Either String Unit)
   }

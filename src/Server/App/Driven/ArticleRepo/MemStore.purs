@@ -6,9 +6,9 @@ import Prelude
 
 import Conduit.Data.Limit (Limit(..))
 import Conduit.Data.UserId (AuthorId)
+import Data.Array (drop, elem, filter, singleton, take)
 import Data.Foldable (foldl)
-import Data.List (List(..))
-import Data.List as List
+import Data.List (toUnfoldable)
 import Data.Map as Map
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
@@ -28,7 +28,7 @@ import Yoga.Om (Om, throw, note)
 
 type ArticleMap = Map.Map ArticleId Article
 type SlugToArticle = Map.Map Slug ArticleId
-type FavoritedBy = Map.Map ArticleId (List AuthorId)
+type FavoritedBy = Map.Map ArticleId (Array AuthorId)
 
 type MemStore =
   { byId :: ArticleMap
@@ -61,14 +61,14 @@ createArticle storeRef { title, description, body, tagList, authorId } = do
       , slug
       , authorId
       , favoritesCount: 0
-      , tagList: fromMaybe Nil tagList
+      , tagList: fromMaybe [] tagList
       , createdAt: now
       , updatedAt: Nothing
       }
     newStore =
       { byId: Map.insert articleId article byId
       , slugToId: Map.insert slug articleId slugToId
-      , favoritedBy: Map.insert articleId Nil favoritedBy
+      , favoritedBy: Map.insert articleId [] favoritedBy
       }
 
   liftAff $ Avar.put newStore storeRef
@@ -85,35 +85,36 @@ getArticleBySlug storeRef slug = do
   articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
-queryBuilder :: ArticleListInput -> ((Tuple Article (List AuthorId)) -> Boolean)
+queryBuilder :: ArticleListInput -> ((Tuple Article (Array AuthorId)) -> Boolean)
 queryBuilder { tag: maybeTag, author: maybeAuthor, favorited: maybeFavorited } =
   let
     tagFilter = case maybeTag of
-      Just tag -> \article -> List.elem tag article.tagList
+      Just tag -> \article -> elem tag article.tagList
       Nothing -> const true
     authorFilter = case maybeAuthor of
       Just author -> \article -> article.authorId == author
       Nothing -> const true
     favoritedByFilter = case maybeFavorited of
-      Just favorited -> \(_ /\ favoritedBy) -> List.elem favorited $ favoritedBy
+      Just favorited -> \(_ /\ favoritedBy) -> elem favorited $ favoritedBy
       Nothing -> const true
   in
     \(article /\ favoritedBy) -> tagFilter article && authorFilter article && favoritedByFilter (article /\ favoritedBy)
 
-listArticles :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (List Article)
+listArticles :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
 listArticles storeRef input@{ limit, offset } =
   do
     { byId, favoritedBy } <- liftAff $ Avar.take storeRef
     pure
       $ foldl
           ( \acc (article /\ _) ->
-              (acc <> List.singleton article)
+              (acc <> singleton article)
           )
-          (Nil :: List Article)
-      $ List.filter (queryBuilder input)
-      $ map (\article -> Tuple article $ fromMaybe Nil $ Map.lookup article.articleId favoritedBy)
-      $ List.take (unwrap (fromMaybe (Limit 20) limit))
-      $ List.drop (fromMaybe 0 offset)
+          ([])
+      $ filter (queryBuilder input)
+      $ map (\article -> Tuple article $ fromMaybe [] $ Map.lookup article.articleId favoritedBy)
+      $ take (unwrap (fromMaybe (Limit 20) limit))
+      $ drop (fromMaybe 0 offset)
+      $ toUnfoldable
       $ Map.values byId
 
 updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article

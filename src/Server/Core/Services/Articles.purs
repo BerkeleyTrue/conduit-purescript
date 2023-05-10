@@ -8,9 +8,9 @@ import Prelude
 
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
+import Data.Array (catMaybes)
 import Data.Date (Date)
 import Data.Either (Either(..))
-import Data.List (List, catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
@@ -25,7 +25,7 @@ type ArticleOutput =
   , title :: String
   , description :: String
   , body :: String
-  , tagList :: List Tag
+  , tagList :: Array Tag
   , createdAt :: Date
   , updatedAt :: Maybe Date
   , favorited :: Boolean
@@ -34,7 +34,7 @@ type ArticleOutput =
   }
 
 newtype ArticleService = ArticleService
-  { list :: { userId :: (Maybe UserId), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (List ArticleOutput)
+  { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
   , getBySlug :: Slug -> Om {} (articleRepoErr :: String) Article
   }
 
@@ -43,18 +43,17 @@ derive instance newtypeArticleService :: Newtype ArticleService _
 listArticles
   :: ArticleRepo
   -> UserService
-  -> { userId :: (Maybe UserId), input :: ArticleListInput }
-  -> Om {} (articleRepoErr :: String) (List ArticleOutput)
-listArticles (ArticleRepo { list }) userService { userId, input } = do
+  -> { username :: (Maybe Username), input :: ArticleListInput }
+  -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
+listArticles (ArticleRepo { list }) userService { username, input } = do
   articles <- expandErr $ list input
-  articlesOutput <- catMaybes <$> traverse (expandErr <<< mapArticle) articles
-  pure $ articlesOutput
+  catMaybes <$> traverse (expandErr <<< mapArticle) articles
 
   where
   getProfile' = (unwrap userService).getProfile
 
   getProfile :: AuthorId -> Om {} (userRepoErr :: String) PublicProfile
-  getProfile = flip getProfile' userId <<< Left
+  getProfile = flip getProfile' username <<< Left
 
   mapArticle :: Article -> Om {} () (Maybe ArticleOutput)
   mapArticle { slug, title, description, body, tagList, createdAt, updatedAt, authorId } = handleErrors { userRepoErr: pure <<< const Nothing } do

@@ -4,9 +4,9 @@ import Prelude
 
 import Conduit.Control.Monad.Except (maybeThrow)
 import Control.Monad.Except (runExceptT)
+import Data.Array (filter, mapMaybe, singleton)
 import Data.Either (Either)
-import Data.List (List)
-import Data.List as List
+import Data.List (toUnfoldable)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
@@ -22,7 +22,7 @@ import Server.Core.Domain.Comment (Comment(..), CommentId(..))
 import Server.Core.Ports.Ports (CommentCreateInput, CommentRepo(..))
 
 type CommentMap = Map CommentId Comment
-type ArticleToCommentId = Map ArticleId (List CommentId)
+type ArticleToCommentId = Map ArticleId (Array CommentId)
 
 type MemStore =
   { byId :: CommentMap
@@ -48,7 +48,7 @@ createComment storeRef { body, authorId, articleId } = runExceptT do
 
     newStore =
       { byId: Map.insert commentId newComment byId
-      , byArticleId: Map.insertWith (<>) articleId (List.singleton commentId) byArticleId
+      , byArticleId: Map.insertWith (<>) articleId (singleton commentId) byArticleId
       }
 
   liftAff $ Avar.put newStore storeRef
@@ -59,15 +59,15 @@ getCommentById storeRef commentId = runExceptT do
   { byId } <- liftAff $ Avar.take storeRef
   maybeThrow ("Comment for id " <> (show commentId) <> "not found.") $ Map.lookup commentId byId
 
-getCommentsByArticleId :: AVar MemStore -> ArticleId -> Aff (Either String (List Comment))
+getCommentsByArticleId :: AVar MemStore -> ArticleId -> Aff (Either String (Array Comment))
 getCommentsByArticleId storeRef articleId = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   maybeThrow ("Comments for article id " <> (show articleId) <> "not found.") $ do
     commentIds <- Map.lookup articleId byArticleId
-    pure $ List.mapMaybe (flip Map.lookup byId) commentIds
+    pure $ mapMaybe (flip Map.lookup byId) commentIds
 
-listComments :: AVar MemStore -> Aff (List Comment)
-listComments storeRef = Map.values <$> _.byId <$> Avar.take storeRef
+listComments :: AVar MemStore -> Aff (Array Comment)
+listComments storeRef = toUnfoldable <$> Map.values <$> _.byId <$> Avar.take storeRef
 
 updateComment :: AVar MemStore -> CommentId -> (Comment -> Comment) -> Aff (Either String Comment)
 updateComment storeRef commentId updateFn = runExceptT do
@@ -88,7 +88,7 @@ deleteComment storeRef commentId = runExceptT do
   let
     newStore =
       { byId: Map.delete commentId byId
-      , byArticleId: Map.mapMaybe (Just <<< (List.filter (_ /= commentId))) byArticleId
+      , byArticleId: Map.mapMaybe (Just <<< (filter (_ /= commentId))) byArticleId
       }
 
   liftAff $ Avar.put newStore storeRef
