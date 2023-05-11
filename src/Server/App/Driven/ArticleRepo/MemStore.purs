@@ -4,6 +4,7 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
+import Conduit.Data.ArticleId (ArticleId(..))
 import Conduit.Data.MySlug (MySlug, generate)
 import Conduit.Data.UserId (AuthorId)
 import Data.Array (drop, elem, filter, singleton, take)
@@ -20,7 +21,7 @@ import Effect.AVar (AVar)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Server.Core.Domain.Article (Article, ArticleId(..))
+import Server.Core.Domain.Article (Article)
 import Server.Core.Ports.Ports (ArticleCreateInput, ArticleRepo(..), ArticleListInput)
 import Yoga.Om (Om, fromAff, note, throw)
 

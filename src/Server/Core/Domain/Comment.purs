@@ -1,5 +1,6 @@
 module Server.Core.Domain.Comment where
 
+import Conduit.Data.ArticleId (ArticleId)
 import Conduit.Data.UserId (AuthorId)
 import Data.Eq (class Eq)
 import Data.JSDate (JSDate)
@@ -7,7 +8,6 @@ import Data.Maybe (Maybe)
 import Data.Ord (class Ord)
 import Data.Show (class Show, show)
 import Data.UUID (UUID)
-import Server.Core.Domain.Article (ArticleId)
 
 newtype CommentId = CommentId UUID
 

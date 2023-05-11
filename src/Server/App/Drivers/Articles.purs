@@ -20,7 +20,7 @@ import Server.Core.Services.User (UserOutput)
 import Server.Infra.Data.Route (limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (writeJSON)
-import Yoga.Om (Om, fromAff, handleErrors)
+import Yoga.Om (Om, handleErrors)
 
 data ArticlesRoute
   = List -- Get

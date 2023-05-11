@@ -3,6 +3,7 @@ module Server.App.Driven.CommentRepo.MemStore where
 import Prelude
 
 import Conduit.Control.Monad.Except (maybeThrow)
+import Conduit.Data.ArticleId (ArticleId)
 import Control.Monad.Except (runExceptT)
 import Data.Array (filter, mapMaybe, singleton)
 import Data.Either (Either)
@@ -17,7 +18,6 @@ import Effect.Aff (Aff)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Server.Core.Domain.Article (ArticleId)
 import Server.Core.Domain.Comment (Comment(..), CommentId(..))
 import Server.Core.Ports.Ports (CommentCreateInput, CommentRepo(..))
 

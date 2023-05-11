@@ -2,6 +2,7 @@ module Server.Core.Ports.Ports where
 
 import Prelude
 
+import Conduit.Data.ArticleId (ArticleId)
 import Conduit.Data.Limit (Limit)
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset)
@@ -10,7 +11,7 @@ import Conduit.Data.Username (Username)
 import Data.Either (Either)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
-import Server.Core.Domain.Article (Article, ArticleId, Tag)
+import Server.Core.Domain.Article (Article, Tag)
 import Server.Core.Domain.Comment (CommentId, Comment)
 import Server.Core.Domain.User (Email, User)
 import Yoga.Om (Om)
