@@ -32,8 +32,8 @@ type MemStore =
   , emailToId :: EmailToIdMap
   }
 
-createUser :: AVar MemStore -> UserCreateInput -> Om {} (userRepoErr :: String) User
-createUser storeRef { username, email, password } = do
+mkCreate :: AVar MemStore -> UserCreateInput -> Om {} (userRepoErr :: String) User
+mkCreate storeRef { username, email, password } = do
   store@{ byId, usernameToId, emailToId } <- fromAff $ Ref.take storeRef
   userId <- liftEffect $ UUID.genUUID <#> (\uuid -> UserId uuid)
   createdNow <- liftEffect $ now
@@ -59,23 +59,23 @@ createUser storeRef { username, email, password } = do
   fromAff $ Ref.put newStore storeRef
   pure $ user
 
-getUserById :: AVar MemStore -> UserId -> Om {} (userRepoErr :: String) User
-getUserById storeRef userId = do
+mkGetById :: AVar MemStore -> UserId -> Om {} (userRepoErr :: String) User
+mkGetById storeRef userId = do
   { byId } <- fromAff $ Ref.read storeRef
   note { userRepoErr: "Could not find user with id " <> show userId } $ Map.lookup userId byId
 
-getUserByUsername :: AVar MemStore -> Username -> Om {} (userRepoErr :: String) User
-getUserByUsername storeRef username = do
+mkGetByUsername :: AVar MemStore -> Username -> Om {} (userRepoErr :: String) User
+mkGetByUsername storeRef username = do
   { byId, usernameToId } <- fromAff $ Ref.read storeRef
   note { userRepoErr: "No user found for " <> show username } $ Map.lookup username usernameToId >>= flip Map.lookup byId
 
-getUserByEmail :: AVar MemStore -> Email -> Om {} (userRepoErr :: String) User
-getUserByEmail storeRef email = do
+mkGetByEmail :: AVar MemStore -> Email -> Om {} (userRepoErr :: String) User
+mkGetByEmail storeRef email = do
   { byId, emailToId } <- fromAff $ Ref.read storeRef
   note { userRepoErr: "No user found for " <> show email } $ Map.lookup email emailToId >>= flip Map.lookup byId
 
-updateUserById :: AVar MemStore -> UserId -> (User -> User) -> Om {} (userRepoErr :: String) User
-updateUserById storeRef userId updateFn = do
+mkUpdateById :: AVar MemStore -> UserId -> (User -> User) -> Om {} (userRepoErr :: String) User
+mkUpdateById storeRef userId updateFn = do
   store@{ byId } <- fromAff $ Ref.take storeRef
   user <- note { userRepoErr: "No user found with id " <> show userId } $ Map.lookup userId byId
 
@@ -91,15 +91,15 @@ updateUserById storeRef userId updateFn = do
     log $ "Error updating user: " <> show err
     throwError err
 
-followUser :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: String) User
-followUser storeRef userId authorId =
-  updateUserById storeRef userId updateFn
+mkFollow :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: String) User
+mkFollow storeRef userId authorId =
+  mkUpdateById storeRef userId updateFn
   where
   updateFn = \user@{ following } -> user { following = nub $ snoc following authorId }
 
-unfollowUser :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: String) User
-unfollowUser storeRef userId authorId =
-  updateUserById storeRef userId updateFn
+mkUnfollow :: AVar MemStore -> UserId -> AuthorId -> Om {} (userRepoErr :: String) User
+mkUnfollow storeRef userId authorId =
+  mkUpdateById storeRef userId updateFn
   where
   updateFn = \user@{ following } -> user { following = filter (_ /= authorId) following }
 
@@ -119,11 +119,11 @@ mkMemoryUserRepo initialState = do
 
   storeRef <- fromAff $ Ref.new { byId: initialState, usernameToId, emailToId }
   pure $ UserRepo
-    { create: createUser storeRef
-    , getById: getUserById storeRef
-    , getByUsername: getUserByUsername storeRef
-    , getByEmail: getUserByEmail storeRef
-    , update: updateUserById storeRef
-    , follow: followUser storeRef
-    , unfollow: unfollowUser storeRef
+    { create: mkCreate storeRef
+    , getById: mkGetById storeRef
+    , getByUsername: mkGetByUsername storeRef
+    , getByEmail: mkGetByEmail storeRef
+    , update: mkUpdateById storeRef
+    , follow: mkFollow storeRef
+    , unfollow: mkUnfollow storeRef
     }
