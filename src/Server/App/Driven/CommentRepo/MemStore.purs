@@ -1,4 +1,6 @@
-module Server.App.Driven.CommentRepo.MemStore where
+module Server.App.Driven.CommentRepo.MemStore
+  ( mkCommentMemoryRepo
+  ) where
 
 import Prelude
 
@@ -29,8 +31,8 @@ type MemStore =
   , byArticleId :: ArticleToCommentId
   }
 
-createComment :: AVar MemStore -> CommentCreateInput -> Aff (Either String Comment)
-createComment storeRef { body, authorId, articleId } = runExceptT do
+mkCreate :: AVar MemStore -> CommentCreateInput -> Aff (Either String Comment)
+mkCreate storeRef { body, authorId, articleId } = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   commentId <- liftEffect $ CommentId <$> genUUID
   now <- liftEffect $ now
@@ -54,34 +56,35 @@ createComment storeRef { body, authorId, articleId } = runExceptT do
   liftAff $ Avar.put newStore storeRef
   pure newComment
 
-getCommentById :: AVar MemStore -> CommentId -> Aff (Either String Comment)
-getCommentById storeRef commentId = runExceptT do
+mkGetById :: AVar MemStore -> CommentId -> Aff (Either String Comment)
+mkGetById storeRef commentId = runExceptT do
   { byId } <- liftAff $ Avar.take storeRef
   maybeThrow ("Comment for id " <> (show commentId) <> "not found.") $ Map.lookup commentId byId
 
-getCommentsByArticleId :: AVar MemStore -> ArticleId -> Aff (Either String (Array Comment))
-getCommentsByArticleId storeRef articleId = runExceptT do
+mkGetByArticleId :: AVar MemStore -> ArticleId -> Aff (Either String (Array Comment))
+mkGetByArticleId storeRef articleId = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   maybeThrow ("Comments for article id " <> (show articleId) <> "not found.") $ do
     commentIds <- Map.lookup articleId byArticleId
     pure $ mapMaybe (flip Map.lookup byId) commentIds
 
-listComments :: AVar MemStore -> Aff (Array Comment)
-listComments storeRef = toUnfoldable <$> Map.values <$> _.byId <$> Avar.take storeRef
+mkList :: AVar MemStore -> Aff (Array Comment)
+mkList storeRef = toUnfoldable <$> Map.values <$> _.byId <$> Avar.take storeRef
 
-updateComment :: AVar MemStore -> CommentId -> (Comment -> Comment) -> Aff (Either String Comment)
-updateComment storeRef commentId updateFn = runExceptT do
+mkUpdate :: AVar MemStore -> CommentId -> (Comment -> Comment) -> Aff (Either String Comment)
+mkUpdate storeRef commentId updateFn = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   comment <- maybeThrow ("Comment for id " <> (show commentId) <> "not found.") $ Map.lookup commentId byId
   let newComment = updateFn comment
   liftAff $ Avar.put
     { byId: Map.insert commentId newComment byId
     , byArticleId
-    } storeRef
+    }
+    storeRef
   pure comment
 
-deleteComment :: AVar MemStore -> CommentId -> Aff (Either String Unit)
-deleteComment storeRef commentId = runExceptT do
+mkDelete :: AVar MemStore -> CommentId -> Aff (Either String Unit)
+mkDelete storeRef commentId = runExceptT do
   { byId, byArticleId } <- liftAff $ Avar.take storeRef
   _ <- maybeThrow ("Comment for id " <> (show commentId) <> " not found.") $ Map.lookup commentId byId
 
@@ -99,10 +102,10 @@ mkCommentMemoryRepo initialComments = do
   storeRef <- Avar.new { byId: initialComments, byArticleId: Map.empty }
   pure $
     CommentRepo
-      { create: createComment storeRef
-      , getById: getCommentById storeRef
-      , getByArticleId: getCommentsByArticleId storeRef
-      , list: listComments storeRef
-      , update: updateComment storeRef
-      , delete: deleteComment storeRef
+      { create: mkCreate storeRef
+      , getById: mkGetById storeRef
+      , getByArticleId: mkGetByArticleId storeRef
+      , list: mkList storeRef
+      , update: mkUpdate storeRef
+      , delete: mkDelete storeRef
       }
