@@ -9,17 +9,16 @@ module Server.Infra.Data.Route
 import Prelude
 
 import Conduit.Data.Limit (Limit, limitToString, stringToLimit)
+import Conduit.Data.MySlug (MySlug, parse, toString)
 import Conduit.Data.Offset (Offset, offsetToString, stringToOffset)
 import Conduit.Data.UserId (UserId, mkUserId)
 import Conduit.Data.Username (Username, mkUsername)
 import Data.Bifunctor (lmap)
 import Data.Either (note)
 import HTTPurple (RouteDuplex', as)
-import Slug (Slug)
-import Slug as Slug
 
-slugR :: RouteDuplex' String -> RouteDuplex' Slug
-slugR = as Slug.toString (Slug.parse >>> note "Invalid slug")
+slugR :: RouteDuplex' String -> RouteDuplex' MySlug
+slugR = as toString (parse >>> note "Invalid slug")
 
 limitR :: RouteDuplex' String -> RouteDuplex' Limit
 limitR = as limitToString stringToLimit
