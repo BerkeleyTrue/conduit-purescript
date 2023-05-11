@@ -116,17 +116,25 @@ mkArticlesRouter { articleService: (ArticleService { getBySlug }) } { route: ByS
   ok' jsonHeaders $ writeJSON output
 
 -- Update Article by Slug
-mkArticlesRouter { articleService: (ArticleService { update }) } { route: BySlug slug, method: Put, body } = defaultErrorHandlers do
-  str <- fromAff $ toString body
-  parsed <- expandErr $ parseInputFromString str
-  article <- expandErr $ update slug parsed.article
-  ok' jsonHeaders $ writeJSON article
+mkArticlesRouter { articleService: (ArticleService { update }) } { route: BySlug slug, method: Put, body, user } =
+  case user of
+    Nothing -> forbidden
+    Just _ -> defaultErrorHandlers do
+      str <- fromAff $ toString body
+      parsed <- expandErr $ parseInputFromString str
+      article <- expandErr $ update slug parsed.article
+      ok' jsonHeaders $ writeJSON article
   where
   parseInputFromString :: String -> Om {} (parsingErr :: MultipleErrors) { article :: ArticleUpdateInput }
   parseInputFromString = throwLeftAsM (\err -> throw { parsingErr: err }) <<< readJSON
 
 -- Delete Article by Slug
-mkArticlesRouter _ { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> Slug.toString slug
+mkArticlesRouter { articleService: (ArticleService { delete }) } { route: BySlug slug, method: Delete, user } =
+  case user of
+    Nothing -> forbidden
+    Just _ -> defaultErrorHandlers do
+      expandErr $ delete slug
+      ok' jsonHeaders $ writeJSON { message: "Article deleted" }
 
 mkArticlesRouter _ { route: BySlug _ } = notFound
 

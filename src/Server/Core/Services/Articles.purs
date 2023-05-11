@@ -44,6 +44,7 @@ newtype ArticleService = ArticleService
   { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
   , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
   , update :: MySlug -> ArticleUpdateInput -> Om {} (articleRepoErr :: String) Article
+  , delete :: MySlug -> Om {} (articleRepoErr :: String) Unit
   }
 
 derive instance newtypeArticleService :: Newtype ArticleService _
@@ -89,10 +90,16 @@ mkUpdate (ArticleRepo { update }) slug input = do
         }
     )
 
+
+mkDelete :: ArticleRepo -> MySlug -> Om {} (articleRepoErr :: String) Unit
+mkDelete (ArticleRepo { delete }) slug = do
+  delete slug
+
 mkArticleService :: ArticleRepo -> UserService -> Om {} () ArticleService
 mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService = pure $
   ArticleService
     { getBySlug: getBySlug
     , list: mkList articlesRepo userService
     , update: mkUpdate articlesRepo
+    , delete: mkDelete articlesRepo
     }
