@@ -116,22 +116,30 @@ listArticles storeRef input@{ limit, offset } =
       $ toUnfoldable
       $ Map.values byId
 
-updateArticle :: AVar MemStore -> ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
-updateArticle storeRef articleId updateFn = do
-  store@{ byId } <- liftAff $ Avar.take storeRef
+mkUpdate :: AVar MemStore -> MySlug -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
+mkUpdate storeRef slug updateFn = do
+  store@{ byId, slugToId } <- liftAff $ Avar.take storeRef
+  articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
   article <- note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
+  let updatedArticle = updateFn article
+
+  newSlug <- note { articleRepoErr: "Could not generate slug from title " <> updatedArticle.title } $ generate updatedArticle.title
+
   let
-    updatedArticle = updateFn article
-    newStore = store { byId = Map.insert articleId updatedArticle byId }
+    withUpdatedSlug = (updatedArticle { slug = newSlug })
+    newStore = store
+      { byId = Map.insert articleId withUpdatedSlug byId
+      , slugToId = Map.insert newSlug articleId slugToId
+      }
 
   liftAff $ Avar.put newStore storeRef
   pure updatedArticle
 
-deleteArticle :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Unit
-deleteArticle storeRef articleId = do
+mkDelete :: AVar MemStore -> MySlug -> Om {} (articleRepoErr :: String) Unit
+mkDelete storeRef slug = do
   { byId, slugToId, favoritedBy } <- liftAff $ Avar.take storeRef
-  { slug } <- note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
+  articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
   liftAff
     $ Avar.put
         { byId: Map.delete articleId byId
@@ -150,6 +158,6 @@ mkMemoryArticleRepo initialState = do
       , getById: getArticleById storeRef
       , getBySlug: getArticleBySlug storeRef
       , list: listArticles storeRef
-      , update: updateArticle storeRef
-      , delete: deleteArticle storeRef
+      , update: mkUpdate storeRef
+      , delete: mkDelete storeRef
       }

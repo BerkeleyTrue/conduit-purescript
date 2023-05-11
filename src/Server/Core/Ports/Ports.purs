@@ -55,8 +55,8 @@ newtype ArticleRepo = ArticleRepo
   , getById :: ArticleId -> Om {} (articleRepoErr :: String) Article
   , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
   , list :: ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
-  , update :: ArticleId -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
-  , delete :: ArticleId -> Om {} (articleRepoErr :: String) Unit
+  , update :: MySlug -> (Article -> Article) -> Om {} (articleRepoErr :: String) Article
+  , delete :: MySlug -> Om {} (articleRepoErr :: String) Unit
   }
 
 type CommentCreateInput =

@@ -2,6 +2,7 @@ module Server.Core.Services.Articles
   ( mkArticleService
   , ArticleService(..)
   , ArticleOutput(..)
+  , ArticleUpdateInput(..)
   ) where
 
 import Prelude
@@ -12,7 +13,7 @@ import Conduit.Data.Username (Username)
 import Data.Array (catMaybes)
 import Data.Either (Either(..))
 import Data.JSDate (JSDate)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Traversable (traverse)
 import Server.Core.Domain.Article (Article, Tag)
@@ -33,19 +34,26 @@ type ArticleOutput =
   , author :: PublicProfile
   }
 
+type ArticleUpdateInput =
+  { title :: Maybe String
+  , description :: Maybe String
+  , body :: Maybe String
+  }
+
 newtype ArticleService = ArticleService
   { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
   , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
+  , update :: MySlug -> ArticleUpdateInput -> Om {} (articleRepoErr :: String) Article
   }
 
 derive instance newtypeArticleService :: Newtype ArticleService _
 
-listArticles
+mkList
   :: ArticleRepo
   -> UserService
   -> { username :: (Maybe Username), input :: ArticleListInput }
   -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
-listArticles (ArticleRepo { list }) userService { username, input } = do
+mkList (ArticleRepo { list }) userService { username, input } = do
   articles <- expandErr $ list input
   catMaybes <$> traverse (expandErr <<< mapArticle) articles
 
@@ -71,9 +79,20 @@ listArticles (ArticleRepo { list }) userService { username, input } = do
       , author: profile
       }
 
+mkUpdate :: ArticleRepo -> MySlug -> ArticleUpdateInput -> Om {} (articleRepoErr :: String) Article
+mkUpdate (ArticleRepo { update }) slug input = do
+  update slug
+    ( \article -> article
+        { title = fromMaybe article.title input.title
+        , description = fromMaybe article.description input.description
+        , body = fromMaybe article.body input.body
+        }
+    )
+
 mkArticleService :: ArticleRepo -> UserService -> Om {} () ArticleService
 mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService = pure $
   ArticleService
     { getBySlug: getBySlug
-    , list: listArticles articlesRepo userService
+    , list: mkList articlesRepo userService
+    , update: mkUpdate articlesRepo
     }
