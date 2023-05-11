@@ -35,8 +35,8 @@ type MemStore =
   , favoritedBy :: FavoritedBy
   }
 
-createArticle :: AVar MemStore -> ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
-createArticle storeRef { title, description, body, tagList, authorId } = do
+mkCreate :: AVar MemStore -> ArticleCreateInput -> Om {} (articleRepoErr :: String) Article
+mkCreate storeRef { title, description, body, tagList, authorId } = do
 
   { byId, slugToId, favoritedBy } <- liftAff $ Avar.take storeRef
 
@@ -73,13 +73,13 @@ createArticle storeRef { title, description, body, tagList, authorId } = do
   liftAff $ Avar.put newStore storeRef
   pure article
 
-getArticleById :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Article
-getArticleById storeRef articleId = do
+mkGetById :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Article
+mkGetById storeRef articleId = do
   { byId } <- liftAff $ Avar.take storeRef
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
-getArticleBySlug :: AVar MemStore -> MySlug -> Om {} (articleRepoErr :: String) Article
-getArticleBySlug storeRef slug = do
+mkGetBySlug :: AVar MemStore -> MySlug -> Om {} (articleRepoErr :: String) Article
+mkGetBySlug storeRef slug = do
   { slugToId, byId } <- liftAff $ Avar.take storeRef
   articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
@@ -99,8 +99,8 @@ queryBuilder { tag: maybeTag, author: maybeAuthor, favorited: maybeFavorited } =
   in
     \(article /\ favoritedBy) -> tagFilter article && authorFilter article && favoritedByFilter (article /\ favoritedBy)
 
-listArticles :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
-listArticles storeRef input@{ limit, offset } =
+mkList :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
+mkList storeRef input@{ limit, offset } =
   do
     { byId, favoritedBy } <- liftAff $ Avar.take storeRef
     pure
@@ -154,10 +154,10 @@ mkMemoryArticleRepo initialState = do
   storeRef <- fromAff $ Avar.new { byId: initialState, slugToId, favoritedBy: Map.empty }
   pure $
     ArticleRepo
-      { create: createArticle storeRef
-      , getById: getArticleById storeRef
-      , getBySlug: getArticleBySlug storeRef
-      , list: listArticles storeRef
+      { create: mkCreate storeRef
+      , getById: mkGetById storeRef
+      , getBySlug: mkGetBySlug storeRef
+      , list: mkList storeRef
       , update: mkUpdate storeRef
       , delete: mkDelete storeRef
       }
