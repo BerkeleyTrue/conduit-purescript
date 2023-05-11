@@ -13,7 +13,6 @@ import Data.Newtype (class Newtype)
 import Server.Core.Domain.Article (Article, ArticleId, Tag)
 import Server.Core.Domain.Comment (CommentId, Comment)
 import Server.Core.Domain.User (Email, User)
-import Slug (Slug)
 import Yoga.Om (Om)
 
 type UserCreateInput =

@@ -11,26 +11,8 @@ import Conduit.Data.Offset (Offset(..))
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe, fromMaybe)
-import HTTPurple
-  ( Method(..)
-  , Response
-  , RouteDuplex'
-  , badRequest'
-  , int
-  , jsonHeaders
-  , notFound
-  , ok
-  , ok'
-  , optional
-  , params
-  , prefix
-  , segment
-  , string
-  , sum
-  , (/)
-  , (?)
-  )
+import Data.Maybe (Maybe(..), fromMaybe)
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, int, jsonHeaders, notFound, ok, ok', optional, params, prefix, segment, string, sum, (/), (?))
 import Justifill (justifill)
 import Server.Core.Services.Articles (ArticleService(..))
 import Server.Core.Services.User (UserOutput)
@@ -39,7 +21,7 @@ import Server.Infra.HttPurple.Types (OmRouter)
 import Slug (Slug)
 import Slug as Slug
 import Yoga.JSON (writeJSON)
-import Yoga.Om (Om, handleErrors)
+import Yoga.Om (Om, fromAff, handleErrors)
 
 data ArticlesRoute
   = List -- Get
@@ -109,16 +91,20 @@ mkArticlesRouter { articleService: (ArticleService { list }) } { route: List { l
 
 mkArticlesRouter _ { route: List _ } = notFound
 
-mkArticlesRouter _ { route: Feed { limit, offset }, method: Get } = ok
-  $ "feed me "
-      <> show limit'
-      <> " articles offset by "
-      <> show offset'
-      <> " offset"
+mkArticlesRouter { articleService: (ArticleService { list }) } { route: Feed { limit, offset }, method: Get, user } = defaultErrorHandlers do
+  case user <#> _.username of
+    Nothing -> forbidden
+    Just username -> do
+      output <- list { username: Just username, input }
+      ok' jsonHeaders $ writeJSON output
 
   where
   limit' = fromMaybe (Limit 20) limit
   offset' = fromMaybe (Offset 0) offset
+  input = justifill
+    { limit: limit'
+    , offset: offset'
+    }
 
 mkArticlesRouter _ { route: Feed _ } = notFound
 
