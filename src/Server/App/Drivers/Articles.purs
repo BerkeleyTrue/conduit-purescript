@@ -7,6 +7,7 @@ module Server.App.Drivers.Articles
 import Prelude hiding ((/))
 
 import Conduit.Data.Limit (Limit(..))
+import Conduit.Data.MySlug (MySlug, toString)
 import Conduit.Data.Offset (Offset(..))
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
@@ -18,8 +19,6 @@ import Server.Core.Services.Articles (ArticleService(..))
 import Server.Core.Services.User (UserOutput)
 import Server.Infra.Data.Route (limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
-import Slug (Slug)
-import Slug as Slug
 import Yoga.JSON (writeJSON)
 import Yoga.Om (Om, fromAff, handleErrors)
 
@@ -35,10 +34,10 @@ data ArticlesRoute
       { limit :: Maybe Limit
       , offset :: Maybe Offset
       }
-  | BySlug Slug -- get, put, delete
-  | Comments Slug
-  | Comment Slug Int
-  | Fav Slug
+  | BySlug MySlug -- get, put, delete
+  | Comments MySlug
+  | Comment MySlug Int
+  | Fav MySlug
 
 derive instance genericArticlesRoute :: Generic ArticlesRoute _
 
@@ -108,18 +107,30 @@ mkArticlesRouter { articleService: (ArticleService { list }) } { route: Feed { l
 
 mkArticlesRouter _ { route: Feed _ } = notFound
 
-mkArticlesRouter _ { route: BySlug slug, method: Get } = ok $ "Get by Slug: " <> Slug.toString slug
-mkArticlesRouter _ { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> Slug.toString slug
-mkArticlesRouter _ { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> Slug.toString slug
+-- Get Article by Slug
+mkArticlesRouter { articleService: (ArticleService { getBySlug }) } { route: BySlug slug, method: Get } = defaultErrorHandlers do
+  output <- getBySlug slug
+  ok' jsonHeaders $ writeJSON output
+
+-- Update Article by Slug
+mkArticlesRouter _ { route: BySlug slug, method: Put } = ok $ "Update by Slug: " <> toString slug
+-- Delete Article by Slug
+mkArticlesRouter _ { route: BySlug slug, method: Delete } = ok $ "Delete by Slug: " <> toString slug
+
 mkArticlesRouter _ { route: BySlug _ } = notFound
 
-mkArticlesRouter _ { route: Comments slug, method: Get } = ok $ "get comments for" <> Slug.toString slug
-mkArticlesRouter _ { route: Comments slug, method: Post } = ok $ "post comments for" <> Slug.toString slug
+-- get comments for article by slug
+mkArticlesRouter _ { route: Comments slug, method: Get } = ok $ "get comments for" <> toString slug
+-- update comments for article by slug
+mkArticlesRouter _ { route: Comments slug, method: Post } = ok $ "post comments for" <> toString slug
 mkArticlesRouter _ { route: Comments _ } = notFound
 
-mkArticlesRouter _ { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> Slug.toString slug
+-- get comment by id for article by slug
+mkArticlesRouter _ { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> toString slug
 mkArticlesRouter _ { route: Comment _ _ } = notFound
 
-mkArticlesRouter _ { route: Fav slug, method: Get } = ok $ "fav an article " <> Slug.toString slug
-mkArticlesRouter _ { route: Fav slug, method: Delete } = ok $ "unfav an article " <> Slug.toString slug
+-- fav an article by slug
+mkArticlesRouter _ { route: Fav slug, method: Get } = ok $ "fav an article " <> toString slug
+-- unfav an article by slug
+mkArticlesRouter _ { route: Fav slug, method: Delete } = ok $ "unfav an article " <> toString slug
 mkArticlesRouter _ { route: Fav _ } = notFound
