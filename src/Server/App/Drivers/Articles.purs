@@ -6,6 +6,7 @@ module Server.App.Drivers.Articles
 
 import Prelude hiding ((/))
 
+import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.Limit (Limit(..))
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.MySlug as Slug
@@ -15,11 +16,12 @@ import Conduit.Data.Username (Username)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, int, jsonHeaders, notFound, ok, ok', optional, params, prefix, segment, string, toString, sum, (/), (?))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, notFound, ok, ok', optional, params, prefix, segment, string, toString, sum, (/), (?))
 import Justifill (justifill)
 import Server.Core.Services.Articles (ArticleService(..), ArticleUpdateInput)
+import Server.Core.Services.Comment (CommentService(..), CommentServiceErrs)
 import Server.Core.Services.User (UserOutput)
-import Server.Infra.Data.Route (limitR, offsetR, slugR, userIdR)
+import Server.Infra.Data.Route (commentIdR, limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
@@ -38,7 +40,7 @@ data ArticlesRoute
       }
   | BySlug MySlug -- get, put, delete
   | Comments MySlug
-  | Comment MySlug Int
+  | Comment MySlug CommentId
   | Fav MySlug
 
 derive instance genericArticlesRoute :: Generic ArticlesRoute _
@@ -58,22 +60,24 @@ articlesRoute = prefix "articles" $ sum
       }
   , "BySlug": slugR segment
   , "Comments": slugR segment / "comments"
-  , "Comment": slugR segment / "comment" / int segment
+  , "Comment": slugR segment / "comment" / commentIdR segment
   , "Fav": slugR segment / "favorite"
   }
 
 type ArticlesRouterExts ext = (user :: Maybe UserOutput | ext)
+type ArticlesRouterDeps = { articleService :: ArticleService, commentService :: CommentService }
 
 defaultErrorHandlers
   :: forall ctx errOut
-   . Om ctx (articleRepoErr :: String, parsingErr :: MultipleErrors | errOut) Response
+   . Om ctx (CommentServiceErrs (parsingErr :: MultipleErrors | errOut)) Response
   -> Om ctx errOut Response
 defaultErrorHandlers = handleErrors
   { articleRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
+  , commentRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   , parsingErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   }
 
-mkArticlesRouter :: forall ext. { articleService :: ArticleService } -> OmRouter ArticlesRoute (ArticlesRouterExts ext)
+mkArticlesRouter :: forall ext. ArticlesRouterDeps -> OmRouter ArticlesRoute (ArticlesRouterExts ext)
 mkArticlesRouter { articleService: (ArticleService { list }) } { route: List { limit, offset, favorited, author, tag }, method: Get, user } = defaultErrorHandlers do
   let (username :: Maybe Username) = user <#> _.username
   output <- expandErr $ list { username, input }
@@ -139,13 +143,17 @@ mkArticlesRouter { articleService: (ArticleService { delete }) } { route: BySlug
 mkArticlesRouter _ { route: BySlug _ } = notFound
 
 -- get comments for article by slug
-mkArticlesRouter _ { route: Comments slug, method: Get } = ok $ "get comments for" <> Slug.toString slug
--- update comments for article by slug
-mkArticlesRouter _ { route: Comments slug, method: Post } = ok $ "post comments for" <> Slug.toString slug
+mkArticlesRouter { commentService: (CommentService { list }) } { route: Comments slug, method: Get } = defaultErrorHandlers do
+  output <- expandErr $ list slug <#> writeJSON
+  ok' jsonHeaders output
+
 mkArticlesRouter _ { route: Comments _ } = notFound
 
--- get comment by id for article by slug
-mkArticlesRouter _ { route: Comment slug id, method: Delete } = ok $ "delete " <> (show id) <> " comment on " <> Slug.toString slug
+-- delete comment by id for article by slug
+mkArticlesRouter { commentService: (CommentService { delete }) } { route: Comment _ id, method: Delete } = defaultErrorHandlers do
+  expandErr $ delete id
+  ok' jsonHeaders $ writeJSON { message: "Comment deleted" }
+
 mkArticlesRouter _ { route: Comment _ _ } = notFound
 
 -- fav an article by slug

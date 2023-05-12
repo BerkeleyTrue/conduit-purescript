@@ -4,7 +4,7 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
-import Conduit.Data.ArticleId (ArticleId(..))
+import Conduit.Data.ArticleId (ArticleId, mkArticleId)
 import Conduit.Data.MySlug (MySlug, generate)
 import Conduit.Data.UserId (AuthorId)
 import Data.Array (drop, elem, filter, singleton, take)
@@ -16,7 +16,6 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
-import Data.UUID (genUUID)
 import Effect.AVar (AVar)
 import Effect.Aff.AVar as Avar
 import Effect.Aff.Class (liftAff)
@@ -48,7 +47,7 @@ mkCreate storeRef { title, description, body, tagList, authorId } = do
         pure slug
     Nothing -> throw { articleRepoErr: "Expected a slug-able title but could not generate from " <> title }
 
-  articleId <- liftEffect $ ArticleId <$> genUUID
+  articleId <- liftEffect $ mkArticleId
   now <- liftEffect $ now
 
   let

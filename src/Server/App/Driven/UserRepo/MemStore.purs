@@ -4,7 +4,7 @@ module Server.App.Driven.UserRepo.MemStore
 
 import Prelude
 
-import Conduit.Data.UserId (UserId(..), AuthorId)
+import Conduit.Data.UserId (AuthorId, UserId, mkUserId)
 import Conduit.Data.Username (Username)
 import Control.Monad.Except (catchError, throwError)
 import Data.Array (filter, nub, snoc)
@@ -13,7 +13,6 @@ import Data.JSDate (now)
 import Data.Map (Map)
 import Data.Map as Map
 import Data.Maybe (Maybe(..))
-import Data.UUID as UUID
 import Effect.AVar (AVar)
 import Effect.Aff.AVar as Ref
 import Effect.Class (liftEffect)
@@ -35,7 +34,7 @@ type MemStore =
 mkCreate :: AVar MemStore -> UserCreateInput -> Om {} (userRepoErr :: String) User
 mkCreate storeRef { username, email, password } = do
   store@{ byId, usernameToId, emailToId } <- fromAff $ Ref.take storeRef
-  userId <- liftEffect $ UUID.genUUID <#> (\uuid -> UserId uuid)
+  userId <- liftEffect $ mkUserId
   createdNow <- liftEffect $ now
 
   let

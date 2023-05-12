@@ -3,16 +3,16 @@ module Server.Core.Ports.Ports where
 import Prelude
 
 import Conduit.Data.ArticleId (ArticleId)
+import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.Limit (Limit)
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
-import Data.Either (Either)
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype)
 import Server.Core.Domain.Article (Article, Tag)
-import Server.Core.Domain.Comment (CommentId, Comment)
+import Server.Core.Domain.Comment (Comment)
 import Server.Core.Domain.User (Email, User)
 import Yoga.Om (Om)
 
@@ -65,11 +65,10 @@ type CommentCreateInput =
   , articleId :: ArticleId
   }
 
-newtype CommentRepo m = CommentRepo
-  { create :: CommentCreateInput -> m (Either String Comment)
-  , getById :: CommentId -> m (Either String Comment)
-  , getByArticleId :: ArticleId -> m (Either String (Array Comment))
-  , list :: m (Array Comment)
-  , update :: CommentId -> (Comment -> Comment) -> m (Either String Comment)
-  , delete :: CommentId -> m (Either String Unit)
+newtype CommentRepo = CommentRepo
+  { create :: CommentCreateInput -> Om {} (commentRepoErr :: String) Comment
+  , getById :: CommentId -> Om {} (commentRepoErr :: String) Comment
+  , getByArticleId :: ArticleId -> Om {} (commentRepoErr :: String) (Array Comment)
+  , update :: CommentId -> (Comment -> Comment) -> Om {} (commentRepoErr :: String) Comment
+  , delete :: CommentId -> Om {} (commentRepoErr :: String) Unit
   }

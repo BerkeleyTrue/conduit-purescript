@@ -7,6 +7,7 @@ module Server.Core.Services.Articles
 
 import Prelude
 
+import Conduit.Data.ArticleId (ArticleId)
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
@@ -43,6 +44,7 @@ type ArticleUpdateInput =
 newtype ArticleService = ArticleService
   { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
   , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
+  , getIdFromSlug :: MySlug -> Om {} (articleRepoErr :: String) ArticleId
   , update :: MySlug -> ArticleUpdateInput -> Om {} (articleRepoErr :: String) Article
   , delete :: MySlug -> Om {} (articleRepoErr :: String) Unit
   }
@@ -99,6 +101,7 @@ mkArticleService :: ArticleRepo -> UserService -> Om {} () ArticleService
 mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService = pure $
   ArticleService
     { getBySlug: getBySlug
+    , getIdFromSlug: liftM1 _.articleId <<< getBySlug
     , list: mkList articlesRepo userService
     , update: mkUpdate articlesRepo
     , delete: mkDelete articlesRepo
