@@ -20,9 +20,10 @@ import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, js
 import Justifill (justifill)
 import Server.Core.Services.Articles (ArticleService(..), ArticleUpdateInput)
 import Server.Core.Services.Comment (CommentService(..), CommentServiceErrs)
-import Server.Core.Services.User (UserOutput)
+import Server.Core.Services.User (UserOutput, UserService(..), UserServiceErrs)
 import Server.Infra.Data.Route (commentIdR, limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
+import Type.Row (type (+))
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
 
@@ -65,16 +66,17 @@ articlesRoute = prefix "articles" $ sum
   }
 
 type ArticlesRouterExts ext = (user :: Maybe UserOutput | ext)
-type ArticlesRouterDeps = { articleService :: ArticleService, commentService :: CommentService }
+type ArticlesRouterDeps = { articleService :: ArticleService, commentService :: CommentService, userService :: UserService }
 
 defaultErrorHandlers
   :: forall ctx errOut
-   . Om ctx (CommentServiceErrs (parsingErr :: MultipleErrors | errOut)) Response
+   . Om ctx (CommentServiceErrs + UserServiceErrs (parsingErr :: MultipleErrors | errOut)) Response
   -> Om ctx errOut Response
 defaultErrorHandlers = handleErrors
   { articleRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   , commentRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   , parsingErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
+  , userRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   }
 
 mkArticlesRouter :: forall ext. ArticlesRouterDeps -> OmRouter ArticlesRoute (ArticlesRouterExts ext)
@@ -146,6 +148,22 @@ mkArticlesRouter _ { route: BySlug _ } = notFound
 mkArticlesRouter { commentService: (CommentService { list }) } { route: Comments slug, method: Get } = defaultErrorHandlers do
   output <- expandErr $ list slug <#> writeJSON
   ok' jsonHeaders output
+
+-- create comment
+mkArticlesRouter
+  { userService: (UserService { getIdFromUsername })
+  , articleService: (ArticleService { getIdFromSlug })
+  , commentService: (CommentService { add })
+  }
+  { route: Comments slug, method: Post, body, user } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      authorId <- expandErr $ getIdFromUsername user'.username
+      articleId <- expandErr $ getIdFromSlug slug
+      body' <- fromAff $ toString body
+      output <- expandErr $ add slug { articleId, body: body', authorId } <#> writeJSON
+      ok' jsonHeaders output
 
 mkArticlesRouter _ { route: Comments _ } = notFound
 

@@ -3,6 +3,7 @@ module Server.Core.Services.Articles
   , ArticleService(..)
   , ArticleOutput(..)
   , ArticleUpdateInput(..)
+  , ArticleServiceErrs
   ) where
 
 import Prelude
@@ -41,12 +42,14 @@ type ArticleUpdateInput =
   , body :: Maybe String
   }
 
+type ArticleServiceErrs r = (articleRepoErr :: String | r)
+
 newtype ArticleService = ArticleService
-  { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (articleRepoErr :: String) (Array ArticleOutput)
-  , getBySlug :: MySlug -> Om {} (articleRepoErr :: String) Article
-  , getIdFromSlug :: MySlug -> Om {} (articleRepoErr :: String) ArticleId
-  , update :: MySlug -> ArticleUpdateInput -> Om {} (articleRepoErr :: String) Article
-  , delete :: MySlug -> Om {} (articleRepoErr :: String) Unit
+  { list :: { username :: (Maybe Username), input :: ArticleListInput } -> Om {} (ArticleServiceErrs ()) (Array ArticleOutput)
+  , getBySlug :: MySlug -> Om {} (ArticleServiceErrs ()) Article
+  , getIdFromSlug :: MySlug -> Om {} (ArticleServiceErrs ()) ArticleId
+  , update :: MySlug -> ArticleUpdateInput -> Om {} (ArticleServiceErrs ()) Article
+  , delete :: MySlug -> Om {} (ArticleServiceErrs ()) Unit
   }
 
 derive instance newtypeArticleService :: Newtype ArticleService _

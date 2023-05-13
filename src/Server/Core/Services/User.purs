@@ -3,6 +3,7 @@ module Server.Core.Services.User
   , UserLoginInput
   , UpdateUserInput
   , UserOutput
+  , UserServiceErrs
   , PublicProfile
   , mkUserService
   , formatUserOutput
@@ -55,14 +56,17 @@ type PublicProfile =
   , following :: Boolean
   }
 
+type UserServiceErrs r = (userRepoErr :: String | r)
+
 newtype UserService = UserService
-  { register :: UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
-  , login :: UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
-  , getUser :: UserId -> Om {} (userRepoErr :: String) UserOutput
-  , getProfile :: (Either AuthorId Authorname) -> Maybe Username -> Om {} (userRepoErr :: String) PublicProfile
-  , update :: (Either UserId Username) -> UpdateUserInput -> Om {} (userRepoErr :: String) UserOutput
-  , follow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
-  , unfollow :: UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
+  { register :: UserCreateInput -> Om {} (UserServiceErrs ()) UserOutput
+  , login :: UserLoginInput -> Om {} (UserServiceErrs ()) UserOutput
+  , getUser :: UserId -> Om {} (UserServiceErrs ()) UserOutput
+  , getIdFromUsername :: Username -> Om {} (UserServiceErrs ()) UserId
+  , getProfile :: (Either AuthorId Authorname) -> Maybe Username -> Om {} (UserServiceErrs ()) PublicProfile
+  , update :: (Either UserId Username) -> UpdateUserInput -> Om {} (UserServiceErrs ()) UserOutput
+  , follow :: UserId -> (Either AuthorId Authorname) -> Om {} (UserServiceErrs ()) PublicProfile
+  , unfollow :: UserId -> (Either AuthorId Authorname) -> Om {} (UserServiceErrs ()) PublicProfile
   }
 
 derive instance newtypeUserService :: Newtype (UserService) _
@@ -71,7 +75,7 @@ formatUserOutput :: User -> UserOutput
 formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
 
 getIdFromUsername :: UserRepo -> Username -> Om {} (userRepoErr :: String) UserId
-getIdFromUsername (UserRepo { getByUsername }) username = getByUsername username >>= pure <<< _.userId
+getIdFromUsername (UserRepo { getByUsername }) username = _.userId <$> getByUsername username
 
 formatUserToPublicProfile :: Maybe UserId -> Author -> PublicProfile
 formatUserToPublicProfile (Just userToFollow) { username, bio, image, following } =
@@ -157,6 +161,7 @@ mkUserService repo = pure $ UserService
   { register: registerUser repo
   , login: loginUser repo
   , getUser: getUser repo
+  , getIdFromUsername: getIdFromUsername repo
   , getProfile: getUserProfile repo
   , update: updateUser repo
   , follow: followUser repo
