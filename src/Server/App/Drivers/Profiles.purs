@@ -9,12 +9,13 @@ import Prelude hiding ((/))
 import Conduit.Data.Username (Authorname)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
-import HTTPurple (Method(..), RouteDuplex', badRequest, notFound, ok, prefix, segment, sum, (/))
-import Server.Core.Services.User (UserService(..))
+import Data.Maybe (Maybe)
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', jsonHeaders, notFound, ok, ok', prefix, segment, sum, (/))
+import Server.Core.Services.User (UserOutput, UserService(..), UserServiceErrs)
 import Server.Infra.Data.Route (usernameR)
 import Server.Infra.HttPurple.Types (OmRouter)
-import Yoga.Om (handleErrors)
+import Yoga.JSON (writeJSON)
+import Yoga.Om (Om, handleErrors)
 
 data ProfilesRoute
   = Profile Authorname
@@ -28,16 +29,22 @@ profilesRoute = prefix "profiles" $ sum
   , "Follow": usernameR segment / "follow"
   }
 
+type ProfilesRouterExts ext = (user :: Maybe UserOutput | ext)
 type ProfilesRouterDeps =
   { userService :: UserService }
 
--- TODO: get userId if authenticated
-mkProfilesRouter :: forall ext. ProfilesRouterDeps -> OmRouter ProfilesRoute ext
-mkProfilesRouter { userService: (UserService { getProfile }) } { method: Get, route: Profile authorname } = handleErrors errorHandlers do
-  user <- getProfile (Right authorname) Nothing
-  ok $ "Get " <> (show authorname) <> "'s profile" <> show user
-  where
-  errorHandlers = { userRepoErr: \err -> badRequest $ "Error getting profile: " <> show err }
+defaultErrorHandlers
+  :: forall ctx errOut
+   . Om ctx (UserServiceErrs errOut) Response
+  -> Om ctx errOut Response
+defaultErrorHandlers = handleErrors
+  { userRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
+  }
+
+mkProfilesRouter :: forall ext. ProfilesRouterDeps -> OmRouter ProfilesRoute (ProfilesRouterExts ext)
+mkProfilesRouter { userService: (UserService { getProfile }) } { method: Get, route: Profile authorname, user } = defaultErrorHandlers do
+  author <- getProfile (Right authorname) $ user <#> _.username
+  ok' jsonHeaders $ writeJSON author
 
 mkProfilesRouter _ { route: Profile _ } = notFound
 
