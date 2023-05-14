@@ -9,8 +9,8 @@ import Prelude hiding ((/))
 import Conduit.Data.Username (Authorname)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest', jsonHeaders, notFound, ok, ok', prefix, segment, sum, (/))
+import Data.Maybe (Maybe(..))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, notFound, ok', prefix, segment, sum, (/))
 import Server.Core.Services.User (UserOutput, UserService(..), UserServiceErrs)
 import Server.Infra.Data.Route (usernameR)
 import Server.Infra.HttPurple.Types (OmRouter)
@@ -49,8 +49,21 @@ mkProfilesRouter { userService: (UserService { getProfile }) } { method: Get, ro
 mkProfilesRouter _ { route: Profile _ } = notFound
 
 -- | Follow a user
-mkProfilesRouter _ { method: Post, route: Follow authorname } = ok $ "Follow " <> (show authorname) <> "'s profile"
+mkProfilesRouter { userService: (UserService { follow, getIdFromUsername }) } { method: Post, route: Follow authorname, user } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      userId <- getIdFromUsername user'.username
+      output <- follow userId (Right authorname) <#> writeJSON
+      ok' jsonHeaders output
 
 -- | Unfollow a user
-mkProfilesRouter _ { method: Delete, route: Follow authorname } = ok $ "Unfollow " <> (show authorname) <> "'s profile"
+mkProfilesRouter { userService: (UserService { unfollow, getIdFromUsername }) } { method: Delete, route: Follow authorname, user } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      userId <- getIdFromUsername user'.username
+      output <- unfollow userId (Right authorname) <#> writeJSON
+      ok' jsonHeaders output
+
 mkProfilesRouter _ { route: Follow _ } = notFound
