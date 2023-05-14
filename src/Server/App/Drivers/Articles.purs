@@ -9,18 +9,17 @@ import Prelude hiding ((/))
 import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.Limit (Limit(..))
 import Conduit.Data.MySlug (MySlug)
-import Conduit.Data.MySlug as Slug
 import Conduit.Data.Offset (Offset(..))
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Foreign (MultipleErrors)
-import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, notFound, ok, ok', optional, params, prefix, segment, string, toString, sum, (/), (?))
+import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, notFound, ok', optional, params, prefix, segment, string, toString, sum, (/), (?))
 import Justifill (justifill)
 import Server.Core.Services.Articles (ArticleService(..), ArticleUpdateInput)
 import Server.Core.Services.Comment (CommentService(..), CommentServiceErrs)
-import Server.Core.Services.User (UserOutput, UserService(..), UserServiceErrs)
+import Server.Core.Services.User (UserOutput, UserService(..))
 import Server.Infra.Data.Route (commentIdR, limitR, offsetR, slugR, userIdR)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Type.Row (type (+))
@@ -70,7 +69,7 @@ type ArticlesRouterDeps = { articleService :: ArticleService, commentService :: 
 
 defaultErrorHandlers
   :: forall ctx errOut
-   . Om ctx (CommentServiceErrs + UserServiceErrs (parsingErr :: MultipleErrors | errOut)) Response
+   . Om ctx (CommentServiceErrs + (parsingErr :: MultipleErrors | errOut)) Response
   -> Om ctx errOut Response
 defaultErrorHandlers = handleErrors
   { articleRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
@@ -117,19 +116,20 @@ mkArticlesRouter { articleService: (ArticleService { list }) } { route: Feed { l
 mkArticlesRouter _ { route: Feed _ } = notFound
 
 -- Get Article by Slug
-mkArticlesRouter { articleService: (ArticleService { getBySlug }) } { route: BySlug slug, method: Get } = defaultErrorHandlers do
-  output <- expandErr $ getBySlug slug
+mkArticlesRouter { articleService: (ArticleService { getBySlug }) } { route: BySlug slug, method: Get, user } = defaultErrorHandlers do
+  output <- expandErr $ getBySlug slug $ user <#> _.username
   ok' jsonHeaders $ writeJSON output
 
 -- Update Article by Slug
 mkArticlesRouter { articleService: (ArticleService { update }) } { route: BySlug slug, method: Put, body, user } =
   case user of
     Nothing -> forbidden
-    Just _ -> defaultErrorHandlers do
+    Just user' -> defaultErrorHandlers do
       str <- fromAff $ toString body
       parsed <- expandErr $ parseInputFromString str
-      article <- expandErr $ update slug parsed.article
+      article <- expandErr $ update slug user'.username parsed.article
       ok' jsonHeaders $ writeJSON article
+
   where
   parseInputFromString :: String -> Om {} (parsingErr :: MultipleErrors) { article :: ArticleUpdateInput }
   parseInputFromString = throwLeftAsM (\err -> throw { parsingErr: err }) <<< readJSON
@@ -175,7 +175,19 @@ mkArticlesRouter { commentService: (CommentService { delete }) } { route: Commen
 mkArticlesRouter _ { route: Comment _ _ } = notFound
 
 -- fav an article by slug
-mkArticlesRouter _ { route: Fav slug, method: Get } = ok $ "fav an article " <> Slug.toString slug
+mkArticlesRouter { articleService: (ArticleService { favorite }) } { route: Fav slug, method: Get, user } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      output <- expandErr $ favorite slug user'.username <#> writeJSON
+      ok' jsonHeaders output
+
 -- unfav an article by slug
-mkArticlesRouter _ { route: Fav slug, method: Delete } = ok $ "unfav an article " <> Slug.toString slug
+mkArticlesRouter { articleService: (ArticleService { unfavorite }) } { route: Fav slug, method: Delete, user } = defaultErrorHandlers do
+  case user of
+    Nothing -> forbidden
+    Just user' -> do
+      output <- expandErr $ unfavorite slug user'.username <#> writeJSON
+      ok' jsonHeaders output
+
 mkArticlesRouter _ { route: Fav _ } = notFound

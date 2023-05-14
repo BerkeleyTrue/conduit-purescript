@@ -55,5 +55,5 @@ apiRouter = do
   let
     userRouter = mkUserRouter { userService: userService }
     profilesRouter = mkProfilesRouter { userService: userService }
-    articlesRouter = mkArticlesRouter { articleService: articleService, commentService: commentService }
+    articlesRouter = mkArticlesRouter { articleService: articleService, commentService: commentService, userService }
   pure $ articlesRouter </> profilesRouter </> userRouter </> apiRootRouter

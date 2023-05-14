@@ -10,12 +10,12 @@ import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.MySlug (MySlug)
 import Server.Core.Domain.Comment (Comment)
 import Server.Core.Ports.Ports (CommentRepo(..), CommentCreateInput)
-import Server.Core.Services.Articles (ArticleService(..))
+import Server.Core.Services.Articles (ArticleService(..), ArticleServiceErrs)
 import Yoga.Om (Om, expandErr)
 
 data Body = String
 
-type CommentServiceErrs r = (articleRepoErr :: String, commentRepoErr :: String | r)
+type CommentServiceErrs r = (ArticleServiceErrs (commentRepoErr :: String | r))
 
 newtype CommentService = CommentService
   { list :: MySlug -> Om {} (CommentServiceErrs ()) (Array Comment)
