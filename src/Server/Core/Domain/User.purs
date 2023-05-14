@@ -4,6 +4,7 @@ module Server.Core.Domain.User
   , Email
   ) where
 
+import Conduit.Data.Password (Password)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
 import Data.JSDate (JSDate)
@@ -15,7 +16,7 @@ type User =
   { userId :: UserId
   , username :: Username
   , email :: Email
-  , password :: String
+  , password :: Password
   , following :: Array AuthorId
   , bio :: Maybe String
   , image :: Maybe String

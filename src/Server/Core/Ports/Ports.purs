@@ -7,6 +7,7 @@ import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.Limit (Limit)
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset)
+import Conduit.Data.Password (Password)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Maybe (Maybe)
@@ -19,7 +20,7 @@ import Yoga.Om (Om)
 type UserCreateInput =
   { username :: Username
   , email :: String
-  , password :: String
+  , password :: Password
   }
 
 newtype UserRepo = UserRepo

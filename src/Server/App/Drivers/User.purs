@@ -79,20 +79,19 @@ mkUserRouter { userService: (UserService { login }) } { route: Authen, method: P
 
 mkUserRouter _ { route: Authen } = notFound
 
--- NOTE: below required that user is authed
 mkUserRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
   case user of
-    Just user' -> userToResponse $ pure $ user'
     Nothing -> forbidden
+    Just user' -> userToResponse $ pure $ user'
 
 -- | update the current user
-mkUserRouter { userService: (UserService { update })} { route: Authed, method: Put, user, body } = defaultErrorHandlers do
+mkUserRouter { userService: (UserService { update }) } { route: Authed, method: Put, user, body } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
     Just userOutput -> do
       input <- fromAff $ toString body
       parsed <- expandErr $ parseInputFromJson input
-      (update (Right userOutput.username) >>> expandErr >>> userToResponse) parsed.user
+      (userToResponse <<< expandErr <<< update (Right userOutput.username)) parsed.user
   where
   parseInputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UpdateUserInput }
   parseInputFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON

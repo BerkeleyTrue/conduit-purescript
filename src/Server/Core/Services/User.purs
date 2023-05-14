@@ -12,7 +12,7 @@ module Server.Core.Services.User
 
 import Prelude
 
-import Conduit.Data.Password (comparePasswords)
+import Conduit.Data.Password (Password, comparePasswords)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username, Authorname)
 import Data.Either (Either(..))
@@ -28,7 +28,7 @@ import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
 type UserLoginInput =
   { username :: Username
   , email :: String
-  , password :: String
+  , password :: Password
   }
 
 type UpdateUserInput =
@@ -36,7 +36,7 @@ type UpdateUserInput =
   , username :: Maybe Username
   , image :: Maybe String
   , bio :: Maybe String
-  , password :: Maybe String
+  , password :: Maybe Password
   }
 
 -- | sent to authorized user
