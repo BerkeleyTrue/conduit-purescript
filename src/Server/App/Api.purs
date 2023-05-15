@@ -13,7 +13,7 @@ import Prelude hiding ((/))
 import Conduit.Data.UserId (UserId)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
-import HTTPurple (Method(..), RouteDuplex', noArgs, notFound, ok, sum, (/), (<+>), type (<+>))
+import HTTPurple (type (<+>), Method(..), RouteDuplex', jsonHeaders, noArgs, notFound, ok', sum, (/), (<+>))
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, mkArticlesRouter)
 import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, mkProfilesRouter)
 import Server.App.Drivers.User (UserRoute, UserRouterExt, mkUserRouter, userRoute)
@@ -23,6 +23,7 @@ import Server.Core.Services.User (UserService)
 import Server.Infra.HttPurple.Routes ((</>))
 import Server.Infra.HttPurple.Types (OmRouter)
 import Type.Row (type (+))
+import Yoga.JSON (writeJSON)
 import Yoga.Om (Om, fromAff, ask)
 
 data ApiRootRoute = Hello
@@ -37,7 +38,7 @@ apiRoute = articlesRoute <+> profilesRoute <+> userRoute <+> sum
   }
 
 apiRootRouter :: forall ext. OmRouter ApiRootRoute ext
-apiRootRouter { route: Hello, method: Get } = fromAff $ ok "Hello Api"
+apiRootRouter { route: Hello, method: Get } = fromAff $ ok' jsonHeaders $ writeJSON { message: "Hello Api" }
 apiRootRouter { route: Hello } = fromAff $ notFound
 
 type JWTPayload = { userId :: UserId, iat :: Int }
