@@ -92,5 +92,5 @@ mkPassword pass = do
   else if (not <<< isAnyLower) pass then Left PasswordMissingLowercase
   else if (not <<< isAnyUpper) pass then Left PasswordMissingUppercase
   else if (not <<< isAnyDigit) pass then Left PasswordMissingNumber
-  else if (not <<< isAnySymbol) pass then Left PasswordMissingSpecialChar
+  else if isAnySymbol pass then Left PasswordMissingSpecialChar
   else Right $ Password pass
