@@ -26,8 +26,7 @@ import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
 import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
 
 type UserLoginInput =
-  { username :: Username
-  , email :: String
+  { email :: String
   , password :: Password
   }
 
@@ -91,8 +90,8 @@ registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
 
 -- | Login User
 loginUser :: UserRepo -> UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
-loginUser (UserRepo { getByEmail }) { username, email, password } = do
-  { password: storedPassword, bio, image } <- getByEmail email
+loginUser (UserRepo { getByEmail }) { email, password } = do
+  { password: storedPassword, bio, image, username } <- getByEmail email
   (isPasswordValid :: Boolean) <- (fromAff $ comparePasswords password storedPassword) >>= throwLeftAsM (\err -> throw { userRepoErr: "Error while comparing passwords: " <> err })
 
   if isPasswordValid then pure { email, bio, image, username, token: "token" }
