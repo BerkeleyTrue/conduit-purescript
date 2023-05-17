@@ -22,7 +22,6 @@ import Server.Core.Services.Comment (CommentService)
 import Server.Core.Services.User (UserService)
 import Server.Infra.HttPurple.Routes ((</>))
 import Server.Infra.HttPurple.Types (OmRouter)
-import Type.Row (type (+))
 import Yoga.JSON (writeJSON)
 import Yoga.Om (Om, fromAff, ask)
 
@@ -42,7 +41,7 @@ apiRootRouter { route: Hello, method: Get } = fromAff $ ok' jsonHeaders $ writeJ
 apiRootRouter { route: Hello } = fromAff $ notFound
 
 type JWTPayload = { userId :: UserId, iat :: Int }
-type ApiRouterExt ext = UserRouterExt + (authed :: Maybe JWTPayload | ext)
+type ApiRouterExt ext = UserRouterExt (authed :: Maybe JWTPayload | ext)
 type ApiRouterCtx ctx =
   { userService :: UserService
   , articleService :: ArticleService
