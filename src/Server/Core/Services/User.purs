@@ -155,8 +155,8 @@ unfollowUser userRepo userId authorIdOrName = do
   where
   unfollow = (unwrap userRepo).unfollow
 
-mkUserService :: UserRepo -> Om {} () UserService
-mkUserService repo = pure $ UserService
+mkUserService :: UserRepo -> UserService
+mkUserService repo = UserService
   { register: registerUser repo
   , login: loginUser repo
   , getUser: getUser repo

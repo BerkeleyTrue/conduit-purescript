@@ -31,9 +31,9 @@ notFoundHandler = const $ response Status.notFound "Could not find the requested
 omApp :: Om AppCtx () Unit
 omApp = do
   { tokenSecret, port } <- ask
-  userService <- expandCtx $ mkMemoryUserRepo Map.empty >>= mkUserService
-  articleService <- expandCtx $ mkMemoryArticleRepo Map.empty >>= flip mkArticleService userService
-  commentService <- expandCtx $ mkCommentMemoryRepo Map.empty >>= flip mkCommentService articleService
+  userService <- expandCtx $ mkMemoryUserRepo Map.empty <#> mkUserService
+  articleService <- expandCtx $ mkMemoryArticleRepo Map.empty <#> flip mkArticleService userService
+  commentService <- expandCtx $ mkCommentMemoryRepo Map.empty <#> flip mkCommentService articleService
   let
     onStarted = log $ "Server started on port " <> show port
 

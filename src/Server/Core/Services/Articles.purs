@@ -138,8 +138,8 @@ mkUnfavorite (ArticleRepo { update }) (UserService { getProfile, getIdFromUserna
   profile <- expandErr $ getProfile (Left article.authorId) (Just username)
   pure $ mkArticleOutput article profile
 
-mkArticleService :: ArticleRepo -> UserService -> Om {} () ArticleService
-mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService = pure $
+mkArticleService :: ArticleRepo -> UserService -> ArticleService
+mkArticleService articlesRepo@(ArticleRepo { getBySlug }) userService =
   ArticleService
     { getBySlug: mkGetBySlug articlesRepo userService
     , getIdFromSlug: expandErr <<< liftM1 _.articleId <<< getBySlug

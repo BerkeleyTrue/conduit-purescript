@@ -53,7 +53,7 @@ apiRouter :: forall ctx ext. Om (ApiRouterCtx ctx) () (OmRouter ApiRoute (ApiRou
 apiRouter = do
   { userService, articleService, commentService } <- ask
   let
-    userRouter = mkUserRouter { userService: userService }
-    profilesRouter = mkProfilesRouter { userService: userService }
-    articlesRouter = mkArticlesRouter { articleService: articleService, commentService: commentService, userService }
+    userRouter = mkUserRouter { userService }
+    profilesRouter = mkProfilesRouter { userService }
+    articlesRouter = mkArticlesRouter { articleService, commentService, userService }
   pure $ articlesRouter </> profilesRouter </> userRouter </> apiRootRouter

@@ -37,9 +37,9 @@ mkDelete :: CommentRepo -> CommentId -> Om {} (CommentServiceErrs ()) Unit
 mkDelete (CommentRepo { delete }) commentId = do
   expandErr $ delete commentId
 
-mkCommentService :: CommentRepo -> ArticleService -> Om {} () CommentService
-mkCommentService commentRepo articleService = do
-  pure $ CommentService
+mkCommentService :: CommentRepo -> ArticleService -> CommentService
+mkCommentService commentRepo articleService =
+  CommentService
     { list: mkList commentRepo articleService
     , add: mkAdd commentRepo articleService
     , delete: mkDelete commentRepo
