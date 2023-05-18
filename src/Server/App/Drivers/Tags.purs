@@ -1,4 +1,4 @@
-module Server.App.Drivers.Tags (TagsRoute(..), tagsRoute, mkTagsRouter) where
+module Server.App.Drivers.Tags (TagRoute(..), tagRoute, mkTagsRouter) where
 
 import Prelude
 
@@ -9,12 +9,12 @@ import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (writeJSON)
 import Yoga.Om (Om, handleErrors)
 
-data TagsRoute = List
+data TagRoute = List
 
-derive instance genericTagRoute :: Generic TagsRoute _
+derive instance genericTagRoute :: Generic TagRoute _
 
-tagsRoute :: RouteDuplex' TagsRoute
-tagsRoute = prefix "tags" $ sum { "List": noArgs }
+tagRoute :: RouteDuplex' TagRoute
+tagRoute = prefix "tags" $ sum { "List": noArgs }
 
 defaultErrorHandlers
   :: forall ctx errOut
@@ -25,7 +25,7 @@ defaultErrorHandlers = handleErrors
   , userRepoErr: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   }
 
-mkTagsRouter :: forall ext. { tagService :: TagService } -> OmRouter TagsRoute ext
+mkTagsRouter :: forall ext. { tagService :: TagService } -> OmRouter TagRoute ext
 mkTagsRouter { tagService: (TagService { list }) } { route: List, method: Get } = defaultErrorHandlers $ do
   tags <- list
   ok' jsonHeaders $ writeJSON { tags }

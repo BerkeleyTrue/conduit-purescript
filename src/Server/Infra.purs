@@ -14,6 +14,7 @@ import Server.App.Driven.CommentRepo.MemStore (mkCommentMemoryRepo)
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.Core.Services.Articles (mkArticleService)
 import Server.Core.Services.Comment (mkCommentService)
+import Server.Core.Services.Tags (mkTagService)
 import Server.Core.Services.User (UserOutput, mkUserService)
 import Server.Infra.HttPurple (omServer)
 import Server.Infra.HttPurple.Middleware.Jwt (mkAuthenticateJwtMiddleware)
@@ -35,6 +36,7 @@ omApp = do
   articleService <- expandCtx $ mkMemoryArticleRepo Map.empty <#> flip mkArticleService userService
   commentService <- expandCtx $ mkCommentMemoryRepo Map.empty <#> flip mkCommentService articleService
   let
+    tagService = mkTagService articleService
     onStarted = log $ "Server started on port " <> show port
 
     authUserMiddleware :: forall route. Middleware route () (authed :: Maybe JWTPayload, user:: Maybe UserOutput)
@@ -44,5 +46,5 @@ omApp = do
     enhanceRouter = developmentLogFormat <<< authUserMiddleware <<< omEnhanceRouter Nothing
     opts = { onStarted, notFoundHandler }
 
-  router' <- widenCtx { userService, articleService, commentService } router <#> enhanceRouter
+  router' <- widenCtx { userService, articleService, commentService, tagService } router <#> enhanceRouter
   omServer opts route router'
