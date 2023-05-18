@@ -17,7 +17,7 @@ import HTTPurple (type (<+>), Method(..), RouteDuplex', jsonHeaders, noArgs, not
 import Server.App.Drivers.Articles (ArticlesRoute, articlesRoute, mkArticlesRouter)
 import Server.App.Drivers.Profiles (ProfilesRoute, profilesRoute, mkProfilesRouter)
 import Server.App.Drivers.Tags (TagRoute, mkTagsRouter, tagRoute)
-import Server.App.Drivers.User (UserRoute, UserRouterExt, mkUserRouter, userRoute)
+import Server.App.Drivers.User (UserRoute, UserRouterExt, mkUsersRouter, userRoute)
 import Server.Core.Services.Articles (ArticleService)
 import Server.Core.Services.Comment (CommentService)
 import Server.Core.Services.Tags (TagService)
@@ -56,8 +56,8 @@ apiRouter :: forall ctx ext. Om (ApiRouterCtx ctx) () (OmRouter ApiRoute (ApiRou
 apiRouter = do
   { userService, articleService, commentService, tagService } <- ask
   let
-    userRouter = mkUserRouter { userService }
+    usersRouter = mkUsersRouter { userService }
     profilesRouter = mkProfilesRouter { userService }
     articlesRouter = mkArticlesRouter { articleService, commentService, userService }
     tagsRouter = mkTagsRouter { tagService }
-  pure $ articlesRouter </> profilesRouter </> userRouter </> tagsRouter </> apiRootRouter
+  pure $ articlesRouter </> profilesRouter </> usersRouter </> tagsRouter </> apiRootRouter

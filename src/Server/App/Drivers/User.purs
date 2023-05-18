@@ -1,7 +1,7 @@
 module Server.App.Drivers.User
   ( UserRoute(..)
   , userRoute
-  , mkUserRouter
+  , mkUsersRouter
   , UserRouterDeps
   , UserRouterExt
   ) where
@@ -52,10 +52,10 @@ defaultErrorHandlers = handleErrors
 userToResponse :: forall errs. Om {} (userRepoErr :: String | errs) UserOutput -> Om {} (userRepoErr :: String | errs) Response
 userToResponse userOm = userOm >>= ok' jsonHeaders <<< writeJSON
 
-mkUserRouter :: forall ext. UserRouterDeps -> OmRouter UserRoute (UserRouterExt ext)
+mkUsersRouter :: forall ext. UserRouterDeps -> OmRouter UserRoute (UserRouterExt ext)
 -- | register a new user
 -- Note: does not check if currently logged in.
-mkUserRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = defaultErrorHandlers do
+mkUsersRouter { userService: (UserService { register }) } { route: Register, method: Post, body } = defaultErrorHandlers do
   str <- fromAff $ toString body
   parsed <- expandErr $ parseUserFromJson str
   expandErr $ (userToResponse <<< register) parsed.user
@@ -64,11 +64,11 @@ mkUserRouter { userService: (UserService { register }) } { route: Register, meth
   parseUserFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserCreateInput }
   parseUserFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
 
-mkUserRouter _ { route: Register } = notFound
+mkUsersRouter _ { route: Register } = notFound
 
 -- | login a user
 -- NOTE: does not check if currently logged in.
-mkUserRouter { userService: (UserService { login }) } { route: Authen, method: Post, body } = defaultErrorHandlers do
+mkUsersRouter { userService: (UserService { login }) } { route: Authen, method: Post, body } = defaultErrorHandlers do
   input <- fromAff $ toString body
   parsed <- expandErr $ parseinputFromJson input
   expandErr $ (userToResponse <<< login) parsed.user
@@ -77,15 +77,15 @@ mkUserRouter { userService: (UserService { login }) } { route: Authen, method: P
   parseinputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserLoginInput }
   parseinputFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
 
-mkUserRouter _ { route: Authen } = notFound
+mkUsersRouter _ { route: Authen } = notFound
 
-mkUserRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
+mkUsersRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
     Just user' -> userToResponse $ pure $ user'
 
 -- | update the current user
-mkUserRouter { userService: (UserService { update }) } { route: Authed, method: Put, user, body } = defaultErrorHandlers do
+mkUsersRouter { userService: (UserService { update }) } { route: Authed, method: Put, user, body } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
     Just userOutput -> do
@@ -96,4 +96,4 @@ mkUserRouter { userService: (UserService { update }) } { route: Authed, method: 
   parseInputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UpdateUserInput }
   parseInputFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
 
-mkUserRouter _ { route: Authed } = notFound
+mkUsersRouter _ { route: Authed } = notFound
