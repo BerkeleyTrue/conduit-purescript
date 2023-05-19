@@ -11,7 +11,6 @@ import Prelude hiding ((/))
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
-import Effect.Class (liftEffect)
 import Foreign (MultipleErrors)
 import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok', sum, toString, (/))
 import Server.Core.Ports.Ports (UserCreateInput)
@@ -52,19 +51,17 @@ defaultErrorHandlers = handleErrors
   , parsingError: \err -> badRequest' jsonHeaders $ writeJSON { message: show err }
   }
 
-userToResponse :: forall errs. Om {} (userRepoErr :: String | errs) UserOutput -> Om {} (userRepoErr :: String | errs) Response
-userToResponse userOm = userOm >>= ok' jsonHeaders <<< writeJSON
+userToResponse :: forall errs. UserOutput -> Om {} (userRepoErr :: String | errs) Response
+userToResponse user = ok' jsonHeaders $ writeJSON ({ user } :: { user :: UserOutput })
 
 mkUsersRouter :: forall ext. UserRouterDeps -> OmRouter UserRoute (UserRouterExt ext)
 -- | register a new user
--- Note: does not check if currently logged in.
-mkUsersRouter { userService: (UserService { register, getIdFromUsername }), tokenService: (TokenService { encode }) } { route: Register, method: Post, body } = defaultErrorHandlers do
+-- NOTE: does not check if currently logged in.
+-- NOTE: updates token
+mkUsersRouter { userService: (UserService { register }), tokenService: (TokenService { updateUserToken }) } { route: Register, method: Post, body } = defaultErrorHandlers do
   str <- fromAff $ toString body
   parsed <- expandErr $ parseUserFromJson str
-  userOutput <- expandErr $ register parsed.user
-  userId <- expandErr $ getIdFromUsername userOutput.username
-  token <- liftEffect $ encode userId
-  ok' jsonHeaders $ writeJSON $ userOutput { token = token }
+  expandErr $ register parsed.user >>= updateUserToken >>= userToResponse
 
   where
   parseUserFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserCreateInput }
@@ -74,13 +71,11 @@ mkUsersRouter _ { route: Register } = notFound
 
 -- | login a user
 -- NOTE: does not check if currently logged in.
-mkUsersRouter { userService: (UserService { login, getIdFromUsername }), tokenService: (TokenService { encode }) } { route: Authen, method: Post, body } = defaultErrorHandlers do
+-- NOTE: updates token
+mkUsersRouter { userService: (UserService { login }), tokenService: (TokenService { updateUserToken }) } { route: Authen, method: Post, body } = defaultErrorHandlers do
   input <- fromAff $ toString body
   parsed <- expandErr $ parseinputFromJson input
-  userOutput <- expandErr $ login parsed.user
-  userId <- expandErr $ getIdFromUsername userOutput.username
-  token <- liftEffect $ encode userId
-  ok' jsonHeaders $ writeJSON $ userOutput { token = token }
+  expandErr $ login parsed.user >>= updateUserToken >>= userToResponse
 
   where
   parseinputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserLoginInput }
@@ -88,22 +83,20 @@ mkUsersRouter { userService: (UserService { login, getIdFromUsername }), tokenSe
 
 mkUsersRouter _ { route: Authen } = notFound
 
+-- | get logged in user
 mkUsersRouter _ { route: Authed, method: Get, user } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
-    Just user' -> userToResponse $ pure $ user'
+    Just user' -> userToResponse user'
 
 -- | update the current user
-mkUsersRouter { userService: (UserService { update, getIdFromUsername }), tokenService: (TokenService { encode }) } { route: Authed, method: Put, user, body } = defaultErrorHandlers do
+mkUsersRouter { userService: (UserService { update }) } { route: Authed, method: Put, user, body } = defaultErrorHandlers do
   case user of
     Nothing -> forbidden
     Just userOutput' -> do
       input <- fromAff $ toString body
       parsed <- expandErr $ parseInputFromJson input
-      userOutput <- expandErr $ update (Right userOutput'.username) parsed.user
-      userId <- expandErr $ getIdFromUsername userOutput.username
-      token <- liftEffect $ encode userId
-      ok' jsonHeaders $ writeJSON $ userOutput { token = token }
+      expandErr $ update (Right userOutput'.username) parsed.user >>= userToResponse
 
   where
   parseInputFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UpdateUserInput }
