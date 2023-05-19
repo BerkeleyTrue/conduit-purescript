@@ -43,15 +43,15 @@ type UserOutput =
   { email :: Email
   , username :: Username
   , token :: String
-  , bio :: Maybe String
-  , image :: Maybe String
+  , bio :: String
+  , image :: String
   }
 
 -- | sent to any third party user
 type PublicProfile =
   { username :: Username
-  , bio :: Maybe String
-  , image :: Maybe String
+  , bio :: String
+  , image :: String
   , following :: Boolean
   }
 
@@ -71,7 +71,13 @@ newtype UserService = UserService
 derive instance newtypeUserService :: Newtype (UserService) _
 
 formatUserOutput :: User -> UserOutput
-formatUserOutput { email, username, bio, image } = { email, username, bio, image, token: "token" }
+formatUserOutput { email, username, bio, image } =
+  { email
+  , username
+  , bio: fromMaybe "" bio
+  , image: fromMaybe "" image
+  , token: "token"
+  }
 
 getIdFromUsername :: UserRepo -> Username -> Om {} (userRepoErr :: String) UserId
 getIdFromUsername (UserRepo { getByUsername }) username = _.userId <$> getByUsername username
@@ -79,11 +85,16 @@ getIdFromUsername (UserRepo { getByUsername }) username = _.userId <$> getByUser
 formatUserToPublicProfile :: Maybe UserId -> Author -> PublicProfile
 formatUserToPublicProfile (Just userToFollow) { username, bio, image, following } =
   { username
-  , bio
-  , image
+  , bio: fromMaybe "" bio
+  , image: fromMaybe "" image
   , following: any (\authorId -> authorId == userToFollow) following
   }
-formatUserToPublicProfile Nothing { username, bio, image } = { username, bio, image, following: false }
+formatUserToPublicProfile Nothing { username, bio, image } =
+  { username
+  , bio: fromMaybe "" bio
+  , image: fromMaybe "" image
+  , following: false
+  }
 
 registerUser :: UserRepo -> UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
 registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
@@ -91,16 +102,14 @@ registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
 -- | Login User
 loginUser :: UserRepo -> UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
 loginUser (UserRepo { getByEmail }) { email, password } = do
-  { password: storedPassword, bio, image, username } <- getByEmail email
+  user@{ password: storedPassword } <- getByEmail email
   (isPasswordValid :: Boolean) <- (fromAff $ comparePasswords password storedPassword) >>= throwLeftAsM (\err -> throw { userRepoErr: "Error while comparing passwords: " <> err })
 
-  if isPasswordValid then pure { email, bio, image, username, token: "token" }
+  if isPasswordValid then pure $ formatUserOutput user
   else throw { userRepoErr: "Invalid email or password" }
 
 getUser :: UserRepo -> UserId -> Om {} (userRepoErr :: String) UserOutput
-getUser (UserRepo { getById }) userId = do
-  { email, username, bio, image } <- getById userId
-  pure { email, username, bio, image, token: "token" }
+getUser (UserRepo { getById }) userId = getById userId <#> formatUserOutput
 
 getUserProfile :: UserRepo -> (Either AuthorId Authorname) -> Maybe Username -> Om {} (userRepoErr :: String) PublicProfile
 getUserProfile userRepo authorIdOrName username = do
