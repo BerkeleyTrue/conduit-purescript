@@ -3,14 +3,12 @@ module Server.App.Api
   , ApiRootRoute(..)
   , ApiRouterCtx
   , ApiRouterExt
-  , JWTPayload
   , apiRoute
   , apiRouter
   ) where
 
 import Prelude hiding ((/))
 
-import Conduit.Data.UserId (UserId)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import HTTPurple (type (<+>), Method(..), RouteDuplex', jsonHeaders, noArgs, notFound, ok', sum, (/), (<+>))
@@ -21,6 +19,7 @@ import Server.App.Drivers.User (UserRoute, UserRouterExt, mkUsersRouter, userRou
 import Server.Core.Services.Articles (ArticleService)
 import Server.Core.Services.Comment (CommentService)
 import Server.Core.Services.Tags (TagService)
+import Server.Core.Services.Token (JwtPayload, TokenService)
 import Server.Core.Services.User (UserService)
 import Server.Infra.HttPurple.Routes ((</>))
 import Server.Infra.HttPurple.Types (OmRouter)
@@ -42,21 +41,21 @@ apiRootRouter :: forall ext. OmRouter ApiRootRoute ext
 apiRootRouter { route: Hello, method: Get } = fromAff $ ok' jsonHeaders $ writeJSON { message: "Hello Api" }
 apiRootRouter { route: Hello } = fromAff $ notFound
 
-type JWTPayload = { userId :: UserId, iat :: Int }
-type ApiRouterExt ext = UserRouterExt (authed :: Maybe JWTPayload | ext)
+type ApiRouterExt ext = UserRouterExt (authed :: Maybe JwtPayload | ext)
 type ApiRouterCtx ctx =
   { userService :: UserService
   , articleService :: ArticleService
   , commentService :: CommentService
   , tagService :: TagService
+  , tokenService :: TokenService
   | ctx
   }
 
 apiRouter :: forall ctx ext. Om (ApiRouterCtx ctx) () (OmRouter ApiRoute (ApiRouterExt ext))
 apiRouter = do
-  { userService, articleService, commentService, tagService } <- ask
+  { userService, articleService, commentService, tagService, tokenService } <- ask
   let
-    usersRouter = mkUsersRouter { userService }
+    usersRouter = mkUsersRouter { userService, tokenService }
     profilesRouter = mkProfilesRouter { userService }
     articlesRouter = mkArticlesRouter { articleService, commentService, userService }
     tagsRouter = mkTagsRouter { tagService }

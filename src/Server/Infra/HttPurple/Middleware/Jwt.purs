@@ -5,6 +5,7 @@ module Server.Infra.HttPurple.Middleware.Jwt
 import Prelude
 
 import Data.Maybe (Maybe(..))
+import Data.Tuple.Nested ((/\))
 import Effect.Aff (message)
 import Effect.Class (liftEffect)
 import Effect.Console (error, log)
@@ -12,21 +13,19 @@ import HTTPurple (RequestR, forbidden', internalServerError', jsonHeaders, looku
 import HTTPurple.Middleware (Middleware)
 import Prim.Row (class Nub, class Union)
 import Record (merge)
-import Server.App.Api (JWTPayload)
-import Server.Core.Services.User (UserOutput, UserService(..))
-import Server.Infra.Yoga.JWT (Jwt(..), Secret, decodeJwt)
+import Server.Core.Services.Token (TokenService(..), JwtPayload)
+import Server.Core.Services.User (UserOutput)
 import Yoga.JSON (writeJSON)
 import Yoga.Om (expandErr, fromAff, runOm)
 
 -- | Authenticate a user using JWT
 mkAuthenticateJwtMiddleware
   :: forall route extIn extOut
-   . Union extIn (authed :: Maybe JWTPayload, user :: Maybe UserOutput) extOut
+   . Union extIn (authed :: Maybe JwtPayload, user :: Maybe UserOutput) extOut
   => Nub (RequestR route extOut) (RequestR route extOut)
-  => UserService
-  -> Secret
+  => TokenService
   -> Middleware route extIn extOut
-mkAuthenticateJwtMiddleware (UserService { getUser }) secret router request@{ headers } = runOm
+mkAuthenticateJwtMiddleware (TokenService { decode }) router request@{ headers } = runOm
   {}
   { exception: \err -> do
       liftEffect $ error $ message err
@@ -41,8 +40,7 @@ mkAuthenticateJwtMiddleware (UserService { getUser }) secret router request@{ he
   case lookup headers "Authorization" of
     Nothing -> do
       liftEffect $ log "No Authorization header"
-      fromAff $ router $ merge request { authed: Nothing :: Maybe JWTPayload, user: Nothing :: Maybe UserOutput }
-    Just jwt -> do
-      (authed :: JWTPayload) <- expandErr $ decodeJwt secret (Jwt jwt)
-      (user :: UserOutput) <- expandErr $ getUser authed.userId
+      fromAff $ router $ merge request { authed: Nothing :: Maybe JwtPayload, user: Nothing :: Maybe UserOutput }
+    Just authHeader -> do
+      (authed /\ user) <- expandErr $ decode authHeader
       fromAff $ router $ merge request { user: Just user, authed: Just authed }

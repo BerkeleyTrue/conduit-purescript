@@ -8,13 +8,13 @@ import Effect.Class.Console (log)
 import HTTPurple (Middleware, response)
 import HTTPurple.Status as Status
 import Server.App (route, router)
-import Server.App.Api (JWTPayload)
 import Server.App.Driven.ArticleRepo.MemStore (mkMemoryArticleRepo)
 import Server.App.Driven.CommentRepo.MemStore (mkCommentMemoryRepo)
 import Server.App.Driven.UserRepo.MemStore (mkMemoryUserRepo)
 import Server.Core.Services.Articles (mkArticleService)
 import Server.Core.Services.Comment (mkCommentService)
 import Server.Core.Services.Tags (mkTagService)
+import Server.Core.Services.Token (JwtPayload, mkTokenService)
 import Server.Core.Services.User (UserOutput, mkUserService)
 import Server.Infra.HttPurple (omServer)
 import Server.Infra.HttPurple.Middleware.Jwt (mkAuthenticateJwtMiddleware)
@@ -36,15 +36,16 @@ omApp = do
   articleService <- expandCtx $ mkMemoryArticleRepo Map.empty <#> flip mkArticleService userService
   commentService <- expandCtx $ mkCommentMemoryRepo Map.empty <#> flip mkCommentService articleService
   let
+    tokenService = mkTokenService userService tokenSecret
     tagService = mkTagService articleService
     onStarted = log $ "Server started on port " <> show port
 
-    authUserMiddleware :: forall route. Middleware route () (authed :: Maybe JWTPayload, user:: Maybe UserOutput)
-    authUserMiddleware = mkAuthenticateJwtMiddleware userService tokenSecret
+    authUserMiddleware :: forall route. Middleware route () (authed :: Maybe JwtPayload, user:: Maybe UserOutput)
+    authUserMiddleware = mkAuthenticateJwtMiddleware tokenService
 
-    enhanceRouter :: forall route. (OmRouter route (authed :: Maybe JWTPayload, user :: Maybe UserOutput)) -> Router route
+    enhanceRouter :: forall route. (OmRouter route (authed :: Maybe JwtPayload, user :: Maybe UserOutput)) -> Router route
     enhanceRouter = developmentLogFormat <<< authUserMiddleware <<< omEnhanceRouter Nothing
     opts = { onStarted, notFoundHandler }
 
-  router' <- widenCtx { userService, articleService, commentService, tagService } router <#> enhanceRouter
+  router' <- widenCtx { userService, articleService, commentService, tagService, tokenService } router <#> enhanceRouter
   omServer opts route router'
