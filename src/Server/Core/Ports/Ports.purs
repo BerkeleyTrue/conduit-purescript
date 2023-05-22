@@ -7,7 +7,7 @@ import Conduit.Data.CommentId (CommentId)
 import Conduit.Data.Limit (Limit)
 import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset)
-import Conduit.Data.Password (Password)
+import Conduit.Data.Password (HashedPassword)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username)
 import Data.Maybe (Maybe)
@@ -17,14 +17,14 @@ import Server.Core.Domain.Comment (Comment)
 import Server.Core.Domain.User (Email, User)
 import Yoga.Om (Om)
 
-type UserCreateInput =
+type UserCreateInput r =
   { username :: Username
   , email :: String
-  , password :: Password
+  | r
   }
 
 newtype UserRepo = UserRepo
-  { create :: UserCreateInput -> Om {} (userRepoErr :: String) User
+  { create :: UserCreateInput (password :: HashedPassword) -> Om {} (userRepoErr :: String) User
   , getById :: UserId -> Om {} (userRepoErr :: String) User
   , getByUsername :: Username -> Om {} (userRepoErr :: String) User
   , getByEmail :: Email -> Om {} (userRepoErr :: String) User

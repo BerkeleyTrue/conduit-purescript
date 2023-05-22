@@ -1,8 +1,10 @@
 module Conduit.Data.Password
   ( Password
   , PasswordValidationErrors
+  , HashedPassword
   , mkPassword
   , passwordToString
+  , hashedPasswordToString
   , hashPassword
   , comparePasswords
   ) where
@@ -20,6 +22,7 @@ import Data.String.Pattern (Pattern(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
+import Effect.Class.Console (log)
 import Foreign (ForeignError(..), fail)
 import Node.Buffer (fromString, toString)
 import Node.Crypto (randomBytes, timingSafeEqual, scrypt)
@@ -27,9 +30,12 @@ import Node.Encoding (Encoding(..))
 import Yoga.JSON (class ReadForeign, readImpl)
 
 newtype Password = Password String
+newtype HashedPassword = HashedPassword String
 
 derive instance eqPassword :: Eq Password
 derive instance ordPassword :: Ord Password
+derive instance eqHashedPassword :: Eq HashedPassword
+derive instance ordHashedPassword :: Ord HashedPassword
 
 instance ReadForeign Password where
   readImpl json = do
@@ -42,7 +48,10 @@ instance ReadForeign Password where
 passwordToString :: Password -> String
 passwordToString (Password password) = password
 
-hashPassword :: Password -> Aff String
+hashedPasswordToString :: HashedPassword -> String
+hashedPasswordToString (HashedPassword password) = password
+
+hashPassword :: Password -> Aff HashedPassword
 hashPassword (Password rawPassword) = do
   password <- liftEffect $ fromString rawPassword UTF8
 
@@ -52,10 +61,11 @@ hashPassword (Password rawPassword) = do
   hash <- scrypt password salt 64
   hashString <- liftEffect $ toString Hex hash
 
-  pure $ hashString <> "." <> saltString
+  pure $ HashedPassword $ hashString <> "." <> saltString
 
-comparePasswords :: Password -> Password -> Aff (Either String Boolean)
-comparePasswords (Password rawPassword) (Password storedPassword) = runExceptT do
+comparePasswords :: Password -> HashedPassword -> Aff (Either String Boolean)
+comparePasswords (Password rawPassword) (HashedPassword storedPassword) = runExceptT do
+  liftEffect $ log $ "Comparing " <> rawPassword <> " to " <> storedPassword
   let (splitten :: List String) = List.fromFoldable $ split (Pattern ".") $ storedPassword
 
   hashedPassword <- maybeThrow "Expected password to be in format 'hash.salt'" $ List.head splitten

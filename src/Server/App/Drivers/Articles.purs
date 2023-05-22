@@ -76,12 +76,12 @@ defaultErrorHandlers = handleErrors
 
 type ArticleRouterExts ext = (user :: Maybe UserOutput | ext)
 type ArticleRouterDeps r =
-  ( articleService :: ArticleService
+  { articleService :: ArticleService
   , userService :: UserService
   | r
-  )
+  }
 
-mkArticleRouter :: forall ext r. { | ArticleRouterDeps r } -> OmRouter ArticleRoute (ArticleRouterExts ext)
+mkArticleRouter :: forall ext r. ArticleRouterDeps r -> OmRouter ArticleRoute (ArticleRouterExts ext)
 mkArticleRouter { articleService: (ArticleService { list }) } { route: List { limit, offset, favorited, author, tag }, method: Get, user } = defaultErrorHandlers do
   let (username :: Maybe Username) = user <#> _.username
   output <- expandErr $ list { username, input }

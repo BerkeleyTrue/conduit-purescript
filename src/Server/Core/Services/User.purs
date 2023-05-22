@@ -4,6 +4,7 @@ module Server.Core.Services.User
   , UpdateUserInput
   , UserOutput
   , UserServiceErrs
+  , UserCreateInputExt
   , PublicProfile
   , mkUserService
   , formatUserOutput
@@ -12,7 +13,7 @@ module Server.Core.Services.User
 
 import Prelude
 
-import Conduit.Data.Password (Password, comparePasswords)
+import Conduit.Data.Password (HashedPassword, Password, comparePasswords, hashPassword)
 import Conduit.Data.UserId (UserId, AuthorId)
 import Conduit.Data.Username (Username, Authorname)
 import Data.Either (Either(..))
@@ -23,7 +24,9 @@ import Data.Newtype (class Newtype, unwrap)
 import Effect.Class (liftEffect)
 import Server.Core.Domain.User (Email, User, Author)
 import Server.Core.Ports.Ports (UserRepo(..), UserCreateInput)
-import Yoga.Om (Om, fromAff, throw, throwLeftAsM)
+import Yoga.Om (Om, expandErr, fromAff, throw, throwLeftAsM)
+
+type UserCreateInputExt = UserCreateInput (password :: Password)
 
 type UserLoginInput =
   { email :: String
@@ -58,7 +61,7 @@ type PublicProfile =
 type UserServiceErrs r = (userRepoErr :: String | r)
 
 newtype UserService = UserService
-  { register :: UserCreateInput -> Om {} (UserServiceErrs ()) UserOutput
+  { register :: UserCreateInputExt -> Om {} (UserServiceErrs ()) UserOutput
   , login :: UserLoginInput -> Om {} (UserServiceErrs ()) UserOutput
   , getUser :: UserId -> Om {} (UserServiceErrs ()) UserOutput
   , getIdFromUsername :: Username -> Om {} (UserServiceErrs ()) UserId
@@ -96,8 +99,10 @@ formatUserToPublicProfile Nothing { username, bio, image } =
   , following: false
   }
 
-registerUser :: UserRepo -> UserCreateInput -> Om {} (userRepoErr :: String) UserOutput
-registerUser (UserRepo { create }) userReg = create userReg <#> formatUserOutput
+registerUser :: UserRepo -> UserCreateInputExt -> Om {} (userRepoErr :: String) UserOutput
+registerUser (UserRepo { create }) input = do
+  hashedPassword <- fromAff $ hashPassword input.password
+  create input { password = hashedPassword } <#> formatUserOutput
 
 -- | Login User
 loginUser :: UserRepo -> UserLoginInput -> Om {} (userRepoErr :: String) UserOutput
@@ -133,16 +138,21 @@ updateUser (UserRepo { update, getByUsername }) eitherIdOrName input = do
   userId <- case eitherIdOrName of
     Left userId -> pure userId
     Right username -> getByUsername username >>= pure <<< _.userId
+  (pass :: Maybe HashedPassword) <- expandErr $ updatePassword input.password
   update userId
     ( \user -> user
         { email = fromMaybe user.email input.email
         , username = fromMaybe user.username input.username
-        , password = fromMaybe user.password input.password
+        , password = fromMaybe user.password pass
         , image = input.image >>= \image -> if image == "" then user.image else Just image
         , bio = input.bio >>= \bio -> if bio == "" then user.bio else Just bio
         , updatedAt = Just now
         }
-    ) >>= pure <<< formatUserOutput
+    ) <#> formatUserOutput
+  where
+  updatePassword :: (Maybe Password) -> Om {} () (Maybe HashedPassword)
+  updatePassword Nothing = pure $ Nothing
+  updatePassword (Just password) = fromAff $ hashPassword password <#> Just
 
 followUser :: UserRepo -> UserId -> (Either AuthorId Authorname) -> Om {} (userRepoErr :: String) PublicProfile
 followUser userRepo userId authorIdOrName = do

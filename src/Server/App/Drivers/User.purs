@@ -13,9 +13,8 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Foreign (MultipleErrors)
 import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, noArgs, notFound, ok', sum, toString, (/))
-import Server.Core.Ports.Ports (UserCreateInput)
 import Server.Core.Services.Token (TokenService(..))
-import Server.Core.Services.User (UserLoginInput, UserOutput, UserService(..), UpdateUserInput)
+import Server.Core.Services.User (UpdateUserInput, UserLoginInput, UserOutput, UserService(..), UserCreateInputExt)
 import Server.Infra.HttPurple.Types (OmRouter)
 import Yoga.JSON (readJSON, writeJSON)
 import Yoga.Om (Om, expandErr, fromAff, handleErrors, throw, throwLeftAsM)
@@ -64,7 +63,7 @@ mkUsersRouter { userService: (UserService { register }), tokenService: (TokenSer
   expandErr $ register parsed.user >>= updateUserToken >>= userToResponse
 
   where
-  parseUserFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserCreateInput }
+  parseUserFromJson :: String -> Om {} (parsingError :: MultipleErrors) { user :: UserCreateInputExt }
   parseUserFromJson = throwLeftAsM (\err -> throw { parsingError: err }) <<< readJSON
 
 mkUsersRouter _ { route: Register } = notFound
