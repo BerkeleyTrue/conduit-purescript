@@ -55,6 +55,11 @@
             ];
 
             dir = ./.;
+
+            test-dependencies = with purs-nix.ps-pkgs; [
+              spec
+            ];
+
           };
 
           conduit-server = pkgs.writeShellScriptBin "conduit-server" ''
@@ -68,6 +73,11 @@
           watch-compile = pkgs.writeShellScriptBin "watch-compile" ''
             set -x
             find src | entr -s 'echo "compiling..."; purs-nix compile'
+          '';
+
+          watch-tests = pkgs.writeShellScriptBin "watch-test" ''
+            set -x
+            find test | entr -s 'echo "compiling tests..."; purs-nix test;'
           '';
         in
         {
@@ -91,12 +101,15 @@
                   };
                   module = "Client.Main";
                 };
+
+                test-module = "Test.Main";
               })
               purs-nix.purescript
               ps-tools.for-0_15.purescript-language-server
               ps-tools.for-0_15.purs-tidy
               conduit-server
               watch-compile
+              watch-tests
             ];
 
             shellHook = ''
