@@ -37,6 +37,12 @@ derive instance ordPassword :: Ord Password
 derive instance eqHashedPassword :: Eq HashedPassword
 derive instance ordHashedPassword :: Ord HashedPassword
 
+instance Show Password where
+  show _ = "***"
+
+instance Show HashedPassword where
+  show _ = "***"
+
 type Salt = Buffer
 
 keylen :: Int
