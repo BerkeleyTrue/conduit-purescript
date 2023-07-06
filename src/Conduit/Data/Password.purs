@@ -13,6 +13,7 @@ import Prelude
 
 import Conduit.Control.Monad.Except (maybeThrow)
 import Conduit.Data.String (isAnyDigit, isAnyLower, isAnySymbol, isAnyUpper)
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.List (List)
@@ -22,9 +23,8 @@ import Data.String.Pattern (Pattern(..))
 import Effect.Aff (Aff)
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
-import Effect.Class.Console (log)
 import Foreign (ForeignError(..), fail)
-import Node.Buffer (fromString, toString)
+import Node.Buffer (Buffer, fromString, size, toString)
 import Node.Crypto (randomBytes, timingSafeEqual, scrypt)
 import Node.Encoding (Encoding(..))
 import Yoga.JSON (class ReadForeign, readImpl)
@@ -36,6 +36,14 @@ derive instance eqPassword :: Eq Password
 derive instance ordPassword :: Ord Password
 derive instance eqHashedPassword :: Eq HashedPassword
 derive instance ordHashedPassword :: Ord HashedPassword
+
+type Salt = Buffer
+
+keylen :: Int
+keylen = 64
+
+saltLen :: Int
+saltLen = 16
 
 instance ReadForeign Password where
   readImpl json = do
@@ -55,28 +63,34 @@ hashPassword :: Password -> Aff HashedPassword
 hashPassword (Password rawPassword) = do
   password <- liftEffect $ fromString rawPassword UTF8
 
-  salt <- liftEffect $ randomBytes 16
+  salt <- liftEffect $ randomBytes saltLen
   saltString <- liftEffect $ toString Hex salt
 
-  hash <- scrypt password salt 64
+  hash <- scrypt password salt keylen
   hashString <- liftEffect $ toString Hex hash
 
   pure $ HashedPassword $ hashString <> "." <> saltString
 
 comparePasswords :: Password -> HashedPassword -> Aff (Either String Boolean)
-comparePasswords (Password rawPassword) (HashedPassword storedPassword) = runExceptT do
-  liftEffect $ log $ "Comparing " <> rawPassword <> " to " <> storedPassword
+comparePasswords (Password givenPassStr) (HashedPassword storedPassword) = runExceptT do
   let (splitten :: List String) = List.fromFoldable $ split (Pattern ".") $ storedPassword
+  givenPassBuff <- liftEffect $ fromString givenPassStr UTF8
 
-  hashedPassword <- maybeThrow "Expected password to be in format 'hash.salt'" $ List.head splitten
+  saltStr <- maybeThrow "Expected password to be in format 'hash.salt'" $ List.tail splitten >>= List.head
+  salt <- liftEffect $ fromString saltStr Hex
 
-  salt <- maybeThrow "Expected password to be in format 'hash.salt'" $ List.tail splitten >>= List.head
-  saltBuf <- liftEffect $ fromString salt Hex
+  storedHashedPass <- maybeThrow "Expected password to be in format 'hash.salt'" $ List.head splitten
 
-  hashedBuff <- liftEffect $ fromString hashedPassword Hex
-  givenHashedBuff <- (liftEffect $ fromString rawPassword UTF8) >>= \given -> liftAff $ scrypt given saltBuf 65
+  storedHashedBuff <- liftEffect $ fromString storedHashedPass Hex
+  givenHashedBuff <- liftAff $ scrypt givenPassBuff salt keylen
 
-  liftEffect $ timingSafeEqual hashedBuff givenHashedBuff
+  givenSize <- liftEffect $ size givenHashedBuff
+  storedSize <- liftEffect $ size storedHashedBuff
+
+  if givenSize /= storedSize
+    then throwError "Passwords do not match"
+    else do
+      liftEffect $ timingSafeEqual givenHashedBuff storedHashedBuff
 
 data PasswordValidationErrors
   = PasswordTooShort
