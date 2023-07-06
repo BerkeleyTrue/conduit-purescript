@@ -77,7 +77,7 @@
 
           watch-tests = pkgs.writeShellScriptBin "watch-test" ''
             set -x
-            find test | entr -s 'echo "compiling tests..."; purs-nix test;'
+            find test src | entr -s 'echo "compiling tests..."; purs-nix test;'
           '';
         in
         {
