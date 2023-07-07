@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/BerkeleyTrue/conduit-purescript#readme",
   "dependencies": {
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "winston": "^3.9.0"
   }
 }
