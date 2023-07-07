@@ -13,13 +13,14 @@ import Conduit.Data.MySlug (MySlug)
 import Conduit.Data.Offset (Offset(..))
 import Conduit.Data.UserId (AuthorId)
 import Conduit.Data.Username (Username)
+import Data.Array (length)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Foreign (MultipleErrors)
 import HTTPurple (Method(..), Response, RouteDuplex', badRequest', forbidden, jsonHeaders, notFound, ok', optional, params, prefix, segment, string, toString, sum, (/), (?), type (<+>), (<+>))
 import Justifill (justifill)
 import Server.App.Drivers.Articles.Comments (CommentRoute, commentRoute, mkCommentRouter)
-import Server.Core.Services.Articles (ArticleService(..), ArticleUpdateInput)
+import Server.Core.Services.Articles (ArticleService(..), ArticleUpdateInput, ArticleOutput)
 import Server.Core.Services.Comment (CommentService, CommentServiceErrs)
 import Server.Core.Services.User (UserOutput, UserService)
 import Server.Infra.Data.Route (limitR, offsetR, slugR, userIdR)
@@ -81,11 +82,15 @@ type ArticleRouterDeps r =
   | r
   }
 
+formatArticlesOutput :: Array ArticleOutput -> { articles :: Array ArticleOutput, articlesCount :: Int }
+formatArticlesOutput articles = { articles, articlesCount: length articles }
+
+-- | Get Articles
 mkArticleRouter :: forall ext r. ArticleRouterDeps r -> OmRouter ArticleRoute (ArticleRouterExts ext)
 mkArticleRouter { articleService: (ArticleService { list }) } { route: List { limit, offset, favorited, author, tag }, method: Get, user } = defaultErrorHandlers do
   let (username :: Maybe Username) = user <#> _.username
   output <- expandErr $ list { username, input }
-  ok' jsonHeaders $ writeJSON output
+  ok' jsonHeaders $ writeJSON $ formatArticlesOutput output
 
   where
   limit' = fromMaybe (Limit 20) limit
@@ -101,12 +106,13 @@ mkArticleRouter { articleService: (ArticleService { list }) } { route: List { li
 
 mkArticleRouter _ { route: List _ } = notFound
 
+-- | Get Articles from feed, requires auth
 mkArticleRouter { articleService: (ArticleService { list }) } { route: Feed { limit, offset }, method: Get, user } = defaultErrorHandlers do
   case user <#> _.username of
     Nothing -> forbidden
     Just username -> do
       output <- expandErr $ list { username: Just username, input }
-      ok' jsonHeaders $ writeJSON output
+      ok' jsonHeaders $ writeJSON $ formatArticlesOutput output
 
   where
   limit' = fromMaybe (Limit 20) limit
@@ -121,7 +127,7 @@ mkArticleRouter _ { route: Feed _ } = notFound
 -- Get Article by Slug
 mkArticleRouter { articleService: (ArticleService { getBySlug }) } { route: BySlug slug, method: Get, user } = defaultErrorHandlers do
   output <- expandErr $ getBySlug slug $ user <#> _.username
-  ok' jsonHeaders $ writeJSON output
+  ok' jsonHeaders $ writeJSON { article: output }
 
 -- Update Article by Slug
 mkArticleRouter { articleService: (ArticleService { update }) } { route: BySlug slug, method: Put, body, user } =
@@ -131,7 +137,7 @@ mkArticleRouter { articleService: (ArticleService { update }) } { route: BySlug 
       str <- fromAff $ toString body
       parsed <- expandErr $ parseInputFromString str
       article <- expandErr $ update slug user'.username parsed.article
-      ok' jsonHeaders $ writeJSON article
+      ok' jsonHeaders $ writeJSON { article }
 
   where
   parseInputFromString :: String -> Om {} (parsingErr :: MultipleErrors) { article :: ArticleUpdateInput }
@@ -153,7 +159,7 @@ mkArticleRouter { articleService: (ArticleService { favorite }) } { route: Fav s
     Nothing -> forbidden
     Just user' -> do
       output <- expandErr $ favorite slug user'.username <#> writeJSON
-      ok' jsonHeaders output
+      ok' jsonHeaders $ writeJSON { article: output }
 
 -- unfav an article by slug
 mkArticleRouter { articleService: (ArticleService { unfavorite }) } { route: Fav slug, method: Delete, user } = defaultErrorHandlers do
@@ -161,7 +167,7 @@ mkArticleRouter { articleService: (ArticleService { unfavorite }) } { route: Fav
     Nothing -> forbidden
     Just user' -> do
       output <- expandErr $ unfavorite slug user'.username <#> writeJSON
-      ok' jsonHeaders output
+      ok' jsonHeaders $ writeJSON { article: output }
 
 mkArticleRouter _ { route: Fav _ } = notFound
 
