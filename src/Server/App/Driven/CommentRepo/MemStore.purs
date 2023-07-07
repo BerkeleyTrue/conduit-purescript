@@ -53,12 +53,12 @@ mkCreate storeRef { body, authorId, articleId } = do
 
 mkGetById :: AVar MemStore -> CommentId -> Om {} (commentRepoErr :: String) Comment
 mkGetById storeRef commentId = do
-  { byId } <- fromAff $ Avar.take storeRef
+  { byId } <- fromAff $ Avar.read storeRef
   note { commentRepoErr: "Comment for id " <> (show commentId) <> "not found." } $ Map.lookup commentId byId
 
 mkGetByArticleId :: AVar MemStore -> ArticleId -> Om {} (commentRepoErr :: String) (Array Comment)
 mkGetByArticleId storeRef articleId = do
-  { byId, byArticleId } <- fromAff $ Avar.take storeRef
+  { byId, byArticleId } <- fromAff $ Avar.read storeRef
   note { commentRepoErr: "Comments for article id " <> (show articleId) <> "not found." } $ do
     commentIds <- Map.lookup articleId byArticleId
     pure $ mapMaybe (flip Map.lookup byId) commentIds

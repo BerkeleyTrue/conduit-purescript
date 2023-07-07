@@ -4,6 +4,7 @@ module Server.App.Driven.ArticleRepo.MemStore
 
 import Prelude
 
+import Conduit.App.Winston (Logger, mkLogger, Level(..))
 import Conduit.Data.ArticleId (ArticleId, mkArticleId)
 import Conduit.Data.MySlug (MySlug, generate)
 import Conduit.Data.UserId (UserId)
@@ -70,12 +71,12 @@ mkCreate storeRef { title, description, body, tagList, authorId } = do
 
 mkGetById :: AVar MemStore -> ArticleId -> Om {} (articleRepoErr :: String) Article
 mkGetById storeRef articleId = do
-  { byId } <- liftAff $ Avar.take storeRef
+  { byId } <- liftAff $ Avar.read storeRef
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
 mkGetBySlug :: AVar MemStore -> MySlug -> Om {} (articleRepoErr :: String) Article
 mkGetBySlug storeRef slug = do
-  { slugToId, byId } <- liftAff $ Avar.take storeRef
+  { slugToId, byId } <- liftAff $ Avar.read storeRef
   articleId <- note { articleRepoErr: "Could not find article with slug " <> show slug } $ Map.lookup slug slugToId
   note { articleRepoErr: "Could not find article with id " <> show articleId } $ Map.lookup articleId byId
 
@@ -94,9 +95,11 @@ queryBuilder { tag: maybeTag, author: maybeAuthor, favorited: maybeFavorited } =
   in
     \article -> tagFilter article && authorFilter article && favoritedByFilter article
 
-mkList :: AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
-mkList storeRef input@{ limit, offset } = do
-  { byId } <- liftAff $ Avar.take storeRef
+mkList :: Logger -> AVar MemStore -> ArticleListInput -> Om {} (articleRepoErr :: String) (Array Article)
+mkList logger storeRef input@{ limit, offset } = do
+  liftEffect $ logger.debug $ "ArticleRepo.mkList: " <> show input
+  { byId } <- liftAff $ Avar.read storeRef
+  liftEffect $ logger.debug $ "ArticleRepo.mkList: byId: " <> show byId
   pure
     $ foldl (\acc article -> (acc <> singleton article)) ([])
     $ filter (queryBuilder input)
@@ -138,6 +141,7 @@ mkDelete storeRef slug = do
 
 mkMemoryArticleRepo :: ArticleMap -> Om {} () ArticleRepo
 mkMemoryArticleRepo initialState = do
+  logger <- liftEffect $ mkLogger Warning "app:driven:articlerepo"
   let slugToId = foldl (\acc { articleId, slug } -> Map.insert slug articleId acc) Map.empty $ Map.values initialState
   storeRef <- fromAff $ Avar.new { byId: initialState, slugToId }
   pure $
@@ -145,7 +149,7 @@ mkMemoryArticleRepo initialState = do
       { create: mkCreate storeRef
       , getById: mkGetById storeRef
       , getBySlug: mkGetBySlug storeRef
-      , list: mkList storeRef
+      , list: mkList logger storeRef
       , update: mkUpdate storeRef
       , delete: mkDelete storeRef
       }
