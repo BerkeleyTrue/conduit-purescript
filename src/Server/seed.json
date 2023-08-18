@@ -1,0 +1,8 @@
+{
+  user: {
+    "382cd5db-0253-4f81-887b-8bb7a446a0bc": {
+      id: "382cd5db-0253-4f81-887b-8bb7a446a0bc",
+      name: "John Doe",
+      email: "john@doe.com",
+  }
+}

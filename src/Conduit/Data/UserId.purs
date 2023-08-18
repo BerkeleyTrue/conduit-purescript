@@ -2,24 +2,27 @@ module Conduit.Data.UserId
   ( userIdToString
   , userIdFromString
   , mkUserId
-  , UserId
+  , UserId(..)
   , AuthorId
   ) where
 
 import Prelude
 
+import Conduit.Data.MyUUID (MyUUID(..))
+import Conduit.Data.MyUUID as UUID
 import Control.Monad.Except (except, withExceptT)
 import Data.Bifunctor (rmap)
-import Data.Either (Either, note)
+import Data.Either (Either)
 import Data.List.NonEmpty (singleton)
-import Data.UUID (UUID, parseUUID)
-import Data.UUID as UUID
+import Data.Newtype (class Newtype)
 import Effect (Effect)
 import Foreign (ForeignError(..))
 import Yoga.JSON (class ReadForeign, class WriteForeign, readImpl, writeImpl)
 
-newtype UserId = UserId UUID
+newtype UserId = UserId MyUUID
 type AuthorId = UserId
+
+derive instance newtypeUserId :: Newtype UserId _
 
 instance ReadForeign UserId where
   readImpl raw = do
@@ -39,7 +42,7 @@ userIdToString :: UserId -> String
 userIdToString (UserId uuid) = UUID.toString uuid
 
 userIdFromString :: String -> Either String UserId
-userIdFromString = rmap UserId <<< note "Invalid UUId" <<< parseUUID
+userIdFromString = rmap UserId <<< UUID.parse
 
 mkUserId :: Effect UserId
-mkUserId = UUID.genUUID <#> UserId
+mkUserId = UserId <$> UUID.generate
